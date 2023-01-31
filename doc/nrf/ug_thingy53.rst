@@ -312,11 +312,6 @@ Use the options :kconfig:option:`CONFIG_MCUMGR_GRP_ZEPHYR_BASIC` and :kconfig:op
 
 See :file:`thing53_nrf5340_cpuapp.conf` in a compatible sample for how this is done.
 
-In addition, the application must call the functions :c:func:`os_mgmt_register_group` and :c:func:`img_mgmt_register_group` to register the image and OS management command handlers.
-The application must also call :c:func:`smp_bt_register` to register the SMP Bluetooth Service.
-
-See the :file:`thingy53.c` source file in a compatible sample for how this is done.
-
 .. _thingy53_app_external_flash:
 
 External flash
