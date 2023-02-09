@@ -243,25 +243,29 @@ See :file:`thingy53_nrf5340_cpuapp.conf` in a compatible sample for how this is 
 USB
 ===
 
-An application compatible with the Nordic Thingy:53 is expected to enable USB CDC ACM as backend for logging.
-The logs are provided using USB CDC ACM to allow accessing them without additional hardware.
+The logs on Nordic Thingy:53 board are, by default, provided using USB CDC ACM to allow accessing them without additional hardware.
 
 Most of the applications and samples compatible with the Nordic Thingy:53 use only a single instance of USB CDC ACM that works as the logger's backend.
 No other USB classes are used.
 These samples can share a common USB product name, vendor ID, and product ID.
 If a sample supports additional USB classes or more than one instance of USB CDC ACM, it must use a dedicated product name, vendor ID, and product ID.
 
-To enable the USB device stack and the CDC ACM class:
+The :kconfig:option:`CONFIG_BOARD_SERIAL_BACKEND_CDC_ACM` Kconfig option (defined in :file:`zephyr/boards/arm/thingy53_nrf5340/Kconfig.defconfig`) automatically sets default values of USB product name, vendor ID and product ID of Thingy:53.
+It also enables USB device stack and initializes USB device at boot.
+USB device remote wakeup feature is disabled by default as it requires extra action from the application side.
+A single USB CDC ACM instance is automatically included in the default board's DTS configuration (:file:`zephyr/boards/arm/thingy53_nrf5340/thingy53_nrf5340_common.dts`).
+The USB CDC instance is used to forward application logs.
 
-* Use the options :kconfig:option:`CONFIG_USB_DEVICE_STACK` and :kconfig:option:`CONFIG_USB_CDC_ACM`.
-* Set the default log level with the :kconfig:option:`CONFIG_USB_CDC_ACM_LOG_LEVEL_ERR` and :kconfig:option:`CONFIG_USB_DEVICE_LOG_LEVEL_ERR` Kconfig options.
-* Enable the UART log backend with the :kconfig:option:`CONFIG_LOG_BACKEND_UART` Kconfig option and disable SEGGER RTT with both the :kconfig:option:`CONFIG_LOG_BACKEND_RTT` and :kconfig:option:`CONFIG_USE_SEGGER_RTT` Kconfig options.
+If you do not want to use the USB CDC ACM as a backend for logging out of the box, you can disable it:
 
-See :file:`thingy53_nrf5340_cpuapp.conf` in a compatible sample for how this is done.
+* Disable the :kconfig:option:`CONFIG_BOARD_SERIAL_BACKEND_CDC_ACM` Kconfig option.
+* If USB CDC ACM is not being used for anything else, it can also be disabled in the application DTS overlay:
 
-In addition, you have to call the :c:func:`usb_enable` function from your application to initialize the USB stack.
+.. code-block:: none
 
-See the :file:`thingy53.c` source file in a compatible sample for how this is done.
+   &cdc_acm_uart {
+		status = "disabled";
+	};
 
 .. _thingy53_app_antenna:
 
