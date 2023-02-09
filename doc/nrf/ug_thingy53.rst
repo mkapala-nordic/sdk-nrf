@@ -243,25 +243,25 @@ See :file:`thingy53_nrf5340_cpuapp.conf` in a compatible sample for how this is 
 USB
 ===
 
-An application compatible with the Nordic Thingy:53 is expected to enable USB CDC ACM as backend for logging.
-The logs are provided using USB CDC ACM to allow accessing them without additional hardware.
+The logs on Nordic Thingy:53 board are mainly expected to be provided using USB CDC ACM to allow accessing them without additional hardware.
 
 Most of the applications and samples compatible with the Nordic Thingy:53 use only a single instance of USB CDC ACM that works as the logger's backend.
 No other USB classes are used.
 These samples can share a common USB product name, vendor ID, and product ID.
 If a sample supports additional USB classes or more than one instance of USB CDC ACM, it must use a dedicated product name, vendor ID, and product ID.
 
-To enable the USB device stack and the CDC ACM class:
+One instance of the USB CDC ACM is enabled by default with the :kconfig:option:`CONFIG_BOARD_SERIAL_BACKEND_CDC_ACM` Kconfig option.
+In addition, `cdc_acm_uart` node have been defined in board DTS file :file:`zephyr/boards/arm/thingy53_nrf5340/thingy53_nrf5340_common.dts`.
 
-* Use the options :kconfig:option:`CONFIG_USB_DEVICE_STACK` and :kconfig:option:`CONFIG_USB_CDC_ACM`.
-* Set the default log level with the :kconfig:option:`CONFIG_USB_CDC_ACM_LOG_LEVEL_ERR` and :kconfig:option:`CONFIG_USB_DEVICE_LOG_LEVEL_ERR` Kconfig options.
-* Enable the UART log backend with the :kconfig:option:`CONFIG_LOG_BACKEND_UART` Kconfig option and disable SEGGER RTT with both the :kconfig:option:`CONFIG_LOG_BACKEND_RTT` and :kconfig:option:`CONFIG_USE_SEGGER_RTT` Kconfig options.
+If you do not want to use the USB CDC ACM as a backend for logging out of the box, you can disable it:
+* Disable the :kconfig:option:`CONFIG_BOARD_SERIAL_BACKEND_CDC_ACM` Kconfig option.
+* If USB CDC ACM is not being used for anything else, it can also be disabled in the application DTS overlay:
 
-See :file:`thingy53_nrf5340_cpuapp.conf` in a compatible sample for how this is done.
+.. code-block:: none
 
-In addition, you have to call the :c:func:`usb_enable` function from your application to initialize the USB stack.
-
-See the :file:`thingy53.c` source file in a compatible sample for how this is done.
+   &cdc_acm_uart {
+		status = "disabled";
+	};
 
 .. _thingy53_app_antenna:
 
