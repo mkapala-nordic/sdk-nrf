@@ -52,6 +52,15 @@ Build system
 
   * Manifest file entry ``mbedtls`` (:makevar:`ZEPHYR_MBEDTLS_MODULE_DIR`) checked out at path :file:`modules/crypto/mbedtls` now points to |NCS|'s fork of MbedTLS instead of Zephyr's fork.
 
+Board support
+-------------
+
+* Simplified Thingy:53 configuration:
+
+  * Added :kconfig:option:`CONFIG_BOARD_SERIAL_BACKEND_CDC_ACM` and DTS `cdc_acm_uart` node to configure USB CDC ACM to be used as logger's backend by default.
+  * Cleaned DTS overlays for Thingy:53 compatible samples and applications from no longer necessary `pm-ext-flash` choice and `cdc-acm-uart` node.
+  * Added :kconfig:option:`NCS_SAMPLE_MCUMGR_BT_OTA_DFU` and :kconfig:option:`NCS_SAMPLE_MCUMGR_BT_OTA_DFU_SPEEDUP` to configure FOTA updates.
+
 Protocols
 =========
 
@@ -802,5 +811,6 @@ Documentation
 
   * The :ref:`software_maturity` page with details about Wi-Fi feature support.
   * The :ref:`app_power_opt` user guide by adding a section about power saving features.
+  * The :ref:`ug_thingy53` by aligning with current simplified configuration.
 
 .. |no_changes_yet_note| replace:: No changes since the latest |NCS| release.
