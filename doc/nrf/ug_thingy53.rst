@@ -220,23 +220,14 @@ The overlay is applied automatically.
 MCUboot bootloader
 ==================
 
-Each sample must enable the MCUboot bootloader and use the same configuration of the bootloader as all of the Nordic Thingy:53-compatible samples in the |NCS|.
+MCUboot bootloader is enabled by default for Thingy:53 in board Kconfig file.
 This ensures that the sample includes the MCUboot bootloader and that an MCUboot-compatible image is generated when the sample is built.
 When using |NCS| to build the MCUboot bootloader for the Thingy:53, the configuration is applied automatically from the MCUboot repository.
 
 The MCUboot bootloader supports serial recovery and a custom command to erase the settings storage partition.
 Erasing the settings partition is needed to ensure that an application is not booted with incompatible content loaded from the settings partition.
 
-Use the following Kconfig options to enable the MCUboot bootloader:
-
-* :kconfig:option:`CONFIG_BOOTLOADER_MCUBOOT`
-* :kconfig:option:`CONFIG_IMG_MANAGER`
-* :kconfig:option:`CONFIG_MCUBOOT_IMG_MANAGER`
-* :kconfig:option:`CONFIG_IMG_ERASE_PROGRESSIVELY`
-
-In addition, set the :kconfig:option:`CONFIG_UPDATEABLE_IMAGE_NUMBER` option to ``2`` and set an image version, such as ``"1.0.0+0"``, using the :kconfig:option:`CONFIG_MCUBOOT_IMAGE_VERSION` Kconfig option.
-
-See :file:`thingy53_nrf5340_cpuapp.conf` in a compatible sample for how this is done.
+In addition, set an image version, such as ``"2.3.0+0"``, using the :kconfig:option:`CONFIG_MCUBOOT_IMAGE_VERSION` Kconfig option.
 
 .. _thingy53_app_usb:
 
@@ -301,16 +292,11 @@ The application supports SMP handlers related to:
 * Operating System (OS) management -- used to reboot the device after the firmware upload is complete.
 * Erasing settings partition -- used to ensure that a new application is not booted with incompatible content in the settings partition written by the previous application.
 
-To enable the MCUmanager library and handling of SMP commands over Bluetooth, use the options :kconfig:option:`CONFIG_MCUMGR` and :kconfig:option:`CONFIG_MCUMGR_SMP_BT`.
-Also, disable encryption and authentication requirement for the Bluetooth SMP transport using :kconfig:option:`CONFIG_MCUMGR_SMP_BT_AUTHEN`.
+To enable FOTA, use :kconfig:option:`NCS_SAMPLE_MCUMGR_BT_OTA_DFU` Kconfig option.
 
-You need to enable the MCUmanager handlers for image and OS management.
-Use the options :kconfig:option:`CONFIG_MCUMGR_CMD_IMG_MGMT` and :kconfig:option:`CONFIG_MCUMGR_CMD_OS_MGMT`.
-
-You also have to enable the MCUmanager processing of basic Zephyr group commands and storage erase commands.
-Use the options :kconfig:option:`CONFIG_MCUMGR_GRP_ZEPHYR_BASIC` and :kconfig:option:`CONFIG_MCUMGR_GRP_BASIC_CMD_STORAGE_ERASE`.
-
-See :file:`thing53_nrf5340_cpuapp.conf` in a compatible sample for how this is done.
+By default, :kconfig:option:`NCS_SAMPLE_MCUMGR_BT_OTA_DFU_SPEEDUP` option is implied when FOTA is enabled.
+This option automatically extends the Bluetooth buffers, which allows to speed up the FOTA transfer over Bluetooth, but can also increase RAM usage.
+You can disable this option manually if necessary.
 
 .. _thingy53_app_external_flash:
 
@@ -318,9 +304,7 @@ External flash
 ==============
 
 During a FOTA update, there might not be enough space available in internal flash storage to store the existing application and network core images as well as the incoming images, so the incoming images must be stored in external flash storage.
-This means that a sample compatible with the Nordic Thingy:53 must enable the external flash using the QSPI driver.
-Enable the option :kconfig:option:`CONFIG_NORDIC_QSPI_NOR`, and set :kconfig:option:`CONFIG_NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE` to ``4096`` and :kconfig:option:`CONFIG_NORDIC_QSPI_NOR_STACK_WRITE_BUFFER_SIZE` to ``16``.
-See :file:`thingy53_nrf5340_cpuapp.conf` in a compatible sample for how this is done.
+Thingy:53 board automatically configures external flash storage when FOTA updates are enabled with :kconfig:option:`NCS_SAMPLE_MCUMGR_BT_OTA_DFU` Kconfig option.
 
 .. _thingy53_compatible_applications:
 
