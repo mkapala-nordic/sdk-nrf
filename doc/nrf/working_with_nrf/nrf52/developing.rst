@@ -34,17 +34,38 @@ You can also use FOTA updates to replace the application.
 FOTA over Bluetooth Low Energy
 ==============================
 
+FOTA updates are supported using MCUmanager's Simple Management Protocol (SMP) over Bluetooth.
+The application acts as a GATT server and allows the connected Bluetooth Central to perform the firmware update.
+Sample must support Bluetooth peripheral role (:kconfig:option:`CONFIG_BT_PERIPHERAL`) in order to use this feature.
+
+The application supports SMP handlers related to:
+
+* Image management.
+* Operating System (OS) management -- used to reboot the device after the firmware upload is complete.
+* Erasing settings partition -- used to ensure that a new application is not booted with incompatible content in the settings partition written by the previous application.
+
 To enable support for FOTA updates, do the following:
 
 * Use MCUboot as the upgradable bootloader (:kconfig:option:`CONFIG_BOOTLOADER_MCUBOOT` must be enabled).
   For more information, go to the :doc:`mcuboot:index-ncs` page.
-* Enable the mcumgr module that handles the transport protocol over Bluetooth® Low Energy as follows:
+* Enable :kconfig:option:`CONFIG_NCS_SAMPLE_MCUMGR_BT_OTA_DFU` Kconfig option, which implies configuration of:
 
-  a. Enable the Kconfig options :kconfig:option:`CONFIG_MCUMGR_CMD_OS_MGMT`, :kconfig:option:`CONFIG_MCUMGR_CMD_IMG_MGMT`, and :kconfig:option:`CONFIG_MCUMGR_SMP_BT`.
-  #. Call the functions :c:func:`os_mgmt_register_group()` and :c:func:`img_mgmt_register_group()` in your application.
-  #. Call the :c:func:`smp_bt_register()` function in your application to initialize the mcumgr Bluetooth Low Energy transport.
+   * All of the SMP command handlers mentioned in the previous paragraph.
+   * SMP BT reassembly feature.
+   * :kconfig:option:`CONFIG_NCS_SAMPLE_MCUMGR_BT_OTA_DFU_SPEEDUP` option -- automatically extends the Bluetooth buffers, which allows to speed up the FOTA transfer over Bluetooth, but also increases RAM usage.
 
-  After completing these steps, your application advertises the SMP Service with ``UUID 8D53DC1D-1DB7-4CD3-868B-8A527460AA84``.
+If necessary, any of the implied options or defaulted values introduced by :kconfig:option:`CONFIG_NCS_SAMPLE_MCUMGR_BT_OTA_DFU` can be modified.
+
+You can either add the above Kconfig options to your application configuration files or inline them in a project build command.
+See how it can be done for ref:`peripheral_lbs` sample:
+
+.. parsed-literal::
+   :class: highlight
+
+    west build -b *build_target* -- -DCONFIG_BOOTLOADER_MCUBOOT=y -DCONFIG_NCS_SAMPLE_MCUMGR_BT_OTA_DFU=y
+
+Once you have completed these steps, when you connect to the device, you will see the SMP Service enabled with the ``UUID 8D53DC1D-1DB7-4CD3-868B-8A527460AA84``.
+If you want to improve your application by adding SMP Service to advertising data, take a look at how it is done in :ref:`zephyr:smp_svr_sample`.
 
 To perform a FOTA update, complete the following steps:
 
