@@ -52,6 +52,17 @@ Build system
 
   * Manifest file entry ``mbedtls`` (:makevar:`ZEPHYR_MBEDTLS_MODULE_DIR`) checked out at path :file:`modules/crypto/mbedtls` now points to |NCS|'s fork of MbedTLS instead of Zephyr's fork.
 
+Board support
+-------------
+
+* Thingy:53:
+
+  * Simplified board configuration:
+
+    * Added :kconfig:option:`CONFIG_BOARD_SERIAL_BACKEND_CDC_ACM` to configure USB CDC ACM to be used as logger's backend by default.
+      See details in :ref:`thingy53_app_usb` section of Thingy:53 application guide.
+    * Cleaned up configuration files of Thingy:53 compatible samples and applications as a result of introducing the above simplifications.
+
 Protocols
 =========
 
@@ -843,5 +854,6 @@ Documentation
 
   * The :ref:`software_maturity` page with details about Wi-Fi feature support.
   * The :ref:`app_power_opt` user guide by adding a section about power saving features.
+  * The :ref:`ug_thingy53` by aligning with current simplified configuration.
 
 .. |no_changes_yet_note| replace:: No changes since the latest |NCS| release.
