@@ -25,10 +25,6 @@ By default, the serial terminal is accessible through the USB CDC ACM class hand
 The serial port is visible right after the Thingy:53 is connected to the host using a USB cable.
 The CDC ACM baudrate is ignored, and transfer goes with USB speed.
 
-.. note::
-   Some of the samples and applications compatible with Thingy:53 may provide multiple instances of USB CDC ACM class.
-   In that case, the first instance is used to provide logs, and the others are used for application-specific usages.
-
 .. _thingy53_building_pgming:
 
 Building and programming from the source code
@@ -36,7 +32,7 @@ Building and programming from the source code
 
 You can program the Nordic Thingy:53 by using the images obtained by building the code in the |NCS| environment.
 
-To set up your system to be able to build a compatible firmware image, follow the :ref:`getting_started` guide for the |NCS|.
+To set up your system to be able to build a firmware image, follow the :ref:`getting_started` guide for the |NCS|.
 
 .. _thingy53_build_pgm_targets:
 
@@ -55,12 +51,8 @@ The build targets of interest for Thingy:53 in the |NCS| are listed in the follo
 | nRF5340 SoC - Network core     |``thingy53_nrf5340_cpunet``                                                                                                       |
 +--------------------------------+----------------------------------------------------------------------------------------------------------------------------------+
 
-.. note::
-   The |NCS| samples and applications that are compatible with the Nordic Thingy:53 follow the :ref:`thingy53_app_guide`.
-   The application guide defines a consistent partition map and bootloader configuration to allow serial and OTA firmware updates.
-
 The |NCS| by default uses :ref:`ug_multi_image` for Thingy:53.
-Because of this, when you choose ``thingy53_nrf5340_cpuapp`` or ``thingy53_nrf5340_cpuapp_ns`` as the build target when building a sample or application that is compatible with Thingy:53, you will generate firmware for both the application core and network core:
+Because of this, when you choose ``thingy53_nrf5340_cpuapp`` or ``thingy53_nrf5340_cpuapp_ns`` as the build target when building a sample or application, you will generate firmware for both the application core and network core:
 
 * The application core firmware consists of MCUboot bootloader and an application image.
 * The network core firmware consists of network core bootloader (B0n) and application firmware of the network core.
@@ -76,7 +68,6 @@ The build process generates firmware in two formats:
 For more information about files generated as output of the build process, see :ref:`app_build_output_files`.
 
 See the following sections for details regarding building and programming the firmware for Thingy:53 in various environments.
-If your Thingy:53 is already programmed with a Thingy:53-compatible sample or application, you can also use the MCUboot bootloader to update the firmware after you finish building.
 See :ref:`thingy53_app_update` for more detailed information about updating firmware on Thingy:53.
 
 .. _thingy53_build_pgm_vscode:
@@ -127,7 +118,8 @@ To build and program the source code from the command line, complete the followi
 
       west build -b *build_target* -d *destination_directory_name*
 
-   The build target should be ``thingy53_nrf5340_cpuapp`` or ``thingy53_nrf5340_cpuapp_ns`` when building samples for the application core and ``thingy53_nrf5340_cpunet`` when building for the network core.
+   The build target should be ``thingy53_nrf5340_cpuapp`` or ``thingy53_nrf5340_cpuapp_ns`` when building samples for the application core.
+   The proper child image for ``thingy53_nrf5340_cpunet`` will be built automatically, check :ref:`thingy53_build_pgm_targets` for details.
 
 #. Program the sample or application:
 
@@ -156,29 +148,25 @@ See :ref:`thingy53_gs_updating_firmware` for details about updating firmware ima
 Firmware update using external debug probe
 ------------------------------------------
 
-If you are using an external debug probe, such as the nRF5340 DK, or any J-Link device supporting ARM Cortex-M33, you do not have to use applications that follow the :ref:`thingy53_app_guide`.
-In that case, you can program the Thingy:53 in a similar way as nRF5340 DK.
+If you are using an external debug probe, such as the nRF5340 DK, or any J-Link device supporting ARM Cortex-M33, you can program the Thingy:53 in a similar way as nRF5340 DK.
 See :ref:`ug_nrf5340` for details.
-
-.. note::
-   You need to program a sample or application compatible with the Nordic :ref:`thingy53_app_guide` to bring back serial recovery and DFU OTA.
 
 .. _thingy53_app_update_mcuboot:
 
 Firmware update using MCUboot bootloader
 ----------------------------------------
 
-The Thingy:53-compatible samples and applications include the MCUboot bootloader that you can use to update firmware.
+Samples and applications built for Thingy:53 include the MCUboot bootloader that you can use to update firmware out of the box.
 This method uses signed binary files :file:`app_update.bin` and :file:`net_core_app_update.bin` (or :file:`dfu_application.zip`).
 You can program the precompiled firmware image using one of the following ways:
 
 * Use the :doc:`mcuboot:index-ncs` feature and the built-in serial recovery mode of Thingy:53.
   In this scenario Thingy is connected directly to your PC through USB.
 * Update the firmware over-the-air (OTA) using Bluetooth LE and the nRF Programmer mobile application for Android or iOS.
-  To use this method, the application that is currently programmed on Thingy:53 must support it.
+  To use this method, the application that is currently programmed on Thingy:53 must support it, refer to :ref:`thingy53_app_fota_smp` section.
   All precompiled images support OTA using Bluetooth.
 
-See :ref:`thingy53_gs_updating_firmware` for the detailed procedures on how to program a Thingy:53 using `nRF Connect Programmer`_ or the nRF Programmer for Android or iOS.
+See :ref:`thingy53_gs_updating_firmware` for the detailed procedures on how to program a Thingy:53 using `nRF Connect Programmer`_ or the `nRF Programmer`_ for Android or iOS.
 
 .. _thingy53_app_guide:
 
@@ -186,27 +174,18 @@ Thingy:53 application guide
 ***************************
 
 The Nordic Thingy:53 does not have a built-in J-Link debug IC.
-Because of that, the samples and applications that are compatible with the Nordic Thingy:53 by default include the MCUboot bootloader with serial recovery support.
-You can update applications compatible with the Nordic Thingy:53 using the DFU functionality with either `nRF Connect Programmer`_ or the `nRF Programmer`_ mobile application.
-
-Enabling DFU and MCUboot requires consistency in configuration of the samples and applications.
-For a sample or application to be compatible with Thingy:53, the application must comply with the configurations described in the following sections.
-
-.. note::
-   To use your application with the Nordic Thingy:53 preprogrammed bootloader, you must only set the proper configuration for the Partition Manager and MCUboot.
-   Configurations that enable the other features are not mandatory, but you can enable them if needed.
-
-   All applications compatible with the Nordic Thingy:53 in the |NCS| also support the additional features.
-   Refer to the source code of the samples and applications for examples of implementation.
+Because of that, Thingy:53 board by default enables MCUboot bootloader with serial recovery support and predefined static Partition Manager memory map.
+It also gives you an option to manually enable FOTA updates.
+Please refer to the following sections for details of what is configured by default and what you can configure by yourself.
 
 .. _thingy53_app_partition_manager_config:
 
 Partition manager configuration
 ===============================
 
-The samples compatible with the Nordic Thingy:53 use :ref:`partition_manager` to define memory partitions.
+The samples and applications for Nordic Thingy:53 use :ref:`partition_manager` by default to define memory partitions.
 The memory layout must stay consistent, so that MCUboot can perform proper image updates and clean up the settings storage partition.
-To ensure that partition layout does not change between builds, the sample must use a static partition layout that is consistent between all compatible samples in the |NCS|.
+To ensure that partition layout does not change between builds, the sample must use a static partition layout that is consistent between all samples in the |NCS|.
 The memory partitions are defined in the :file:`pm_static_thingy53_nrf5340_cpuapp.yml` and :file:`pm_static_thingy53_nrf5340_cpuapp_ns.yml` files in the :file:`zephyr/boards/arm/thingy53_nrf5340` directory.
 
 The PCD SRAM partition is locked by the MCUboot bootloader to prevent the application from modifying the network core firmware.
@@ -236,7 +215,7 @@ USB
 
 The logs on Nordic Thingy:53 board are, by default, provided using USB CDC ACM to allow accessing them without additional hardware.
 
-Most of the applications and samples compatible with the Nordic Thingy:53 use only a single instance of USB CDC ACM that works as the logger's backend.
+Most of the applications and samples for Thingy:53 use only a single instance of USB CDC ACM that works as the logger's backend.
 No other USB classes are used.
 These samples can share a common USB product name, vendor ID, and product ID.
 If a sample supports additional USB classes or more than one instance of USB CDC ACM, it must use a dedicated product name, vendor ID, and product ID.
@@ -273,7 +252,7 @@ The Nordic Thingy:53 has an RF front-end with two 2.4 GHz antennas:
 
    Nordic Thingy:53 - Antenna connections
 
-The samples in the |NCS| that are compatible with the Nordic Thingy:53 use **ANT1** by default, with the nRF21540 gain set to +10 dBm.
+The samples in the |NCS| use **ANT1** by default, with the nRF21540 gain set to +10 dBm.
 You can configure the TX gain with the :kconfig:option:`CONFIG_MPSL_FEM_NRF21540_TX_GAIN_DB` Kconfig option to select between +10 dBm or +20 dBm gain.
 To use the **ANT2** antenna, disable the :kconfig:option:`CONFIG_MPSL_FEM` Kconfig option in the network core's child image configuration.
 
@@ -305,10 +284,10 @@ Thingy:53 board automatically configures external flash storage and QSPI driver 
 
 .. _thingy53_compatible_applications:
 
-Samples and applications compatible with Thingy:53
-==================================================
+Samples and applications for Thingy:53 with FOTA out of the box
+===============================================================
 
-The following samples and applications in the |NCS| are already compatible with Thingy:53:
+The following samples and applications in the |NCS| already enable by default FOTA for Thingy:53:
 
 * Applications:
 
