@@ -186,6 +186,7 @@ void main(void)
 	int blink_status = 0;
 	int err;
 
+	printk("ver: %s\n", CONFIG_MCUBOOT_IMAGE_VERSION);
 	printk("Starting Bluetooth Peripheral LBS example\n");
 
 	err = dk_leds_init();
