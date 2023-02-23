@@ -127,3 +127,14 @@ config NCS_SAMPLE_MCUMGR_BT_OTA_DFU_VALIDATION
 	  Enable this option to validate the MCUmgr OTA DFU configuration at the
 	  build time. If the project configuration does not match predefined
 	  defaults, the build system issues a warning for each misaligned item.
+
+
+if MCUMGR_CMD_IMG_MGMT
+
+config IMG_MGMT_DIRECT_IMAGE_UPLOAD
+	default y
+
+config IMG_MGMT_REJECT_DIRECT_XIP_MISMATCHED_SLOT
+	default y
+
+endif
