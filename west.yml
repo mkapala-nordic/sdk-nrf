@@ -35,6 +35,8 @@ manifest:
       url-base: https://github.com/memfault
     - name: ant-nrfconnect
       url-base: https://github.com/ant-nrfconnect
+    - name: mkapala-nordic
+      url-base: https://github.com/mkapala-nordic
 
   # If not otherwise specified, the projects below should be obtained
   # from the ncs remote.
@@ -57,7 +59,8 @@ manifest:
     # https://developer.nordicsemi.com/nRF_Connect_SDK/doc/latest/zephyr/guides/modules.html
     - name: zephyr
       repo-path: sdk-zephyr
-      revision: 74c7bca86e6a7d590333681eef90e159d79bcfe8
+      remote: mkapala-nordic
+      revision: direct-xip/de-nordic-changes
       import:
         # In addition to the zephyr repository itself, NCS also
         # imports the contents of zephyr/west.yml at the above
@@ -116,7 +119,8 @@ manifest:
           compare-by-default: false
     - name: mcuboot
       repo-path: sdk-mcuboot
-      revision: c78d59dbe8ec48cfbdff9a0bfc12f25b90c73d2f
+      remote: mkapala-nordic
+      revision: direct-xip/de-nordic-changes
       path: bootloader/mcuboot
     - name: qcbor
       url: https://github.com/laurencelundblade/QCBOR.git
