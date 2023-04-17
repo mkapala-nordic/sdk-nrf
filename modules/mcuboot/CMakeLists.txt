@@ -503,6 +503,22 @@ if(CONFIG_BOOTLOADER_MCUBOOT)
         "${net_core_binary_name}version=${net_core_version}"
         "${net_core_binary_name}soc=${net_core_soc}"
         )
+    elseif(CONFIG_BOOT_BUILD_DIRECT_XIP_VARIANT)
+      set(secondary_app_core_binary_name mcuboot_secondary_app_update.bin)
+      set(generate_bin_files
+        ${PROJECT_BINARY_DIR}/${app_core_binary_name}
+        ${PROJECT_BINARY_DIR}/${secondary_app_core_binary_name}
+        )
+      set(generate_script_params
+        "${app_core_binary_name}load_address=$<TARGET_PROPERTY:partition_manager,PM_MCUBOOT_PRIMARY_ADDRESS>"
+        "${app_core_binary_name}image_index=0"
+        "${app_core_binary_name}slot_index_primary=1"
+        "${app_core_binary_name}version_MCUBOOT_XIP=${CONFIG_MCUBOOT_IMAGE_VERSION}"
+        "${secondary_app_core_binary_name}load_address=$<TARGET_PROPERTY:partition_manager,PM_MCUBOOT_SECONDARY_ADDRESS>"
+        "${secondary_app_core_binary_name}image_index=1"
+        "${secondary_app_core_binary_name}slot_index_secondary=2"
+        "${secondary_app_core_binary_name}version_MCUBOOT_XIP=${CONFIG_MCUBOOT_IMAGE_VERSION}"
+        )
     else()
       # No network core update
       set(generate_bin_files
