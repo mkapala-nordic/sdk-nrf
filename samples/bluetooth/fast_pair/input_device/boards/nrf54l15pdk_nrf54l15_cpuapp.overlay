@@ -1,0 +1,42 @@
+/*
+ * Copyright (c) 2023 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-4-Clause
+ */
+
+/ {
+	chosen {
+		zephyr,entropy = &psa_rng;
+	};
+
+	psa_rng: psa-rng {
+		compatible = "zephyr,psa-crypto-rng";
+		status = "okay";
+	};
+};
+
+/* Redefine the partition map. */
+&rram0 {
+	/delete-node/ partitions;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		slot0_partition: partition@0 {
+			label = "image-0";
+			reg = <0x0 DT_SIZE_K(1452)>;
+		};
+
+                bt_fast_pair_partition: partition@16b000 {
+			label = "bt_fast_pair";
+			reg = <0x16b000 DT_SIZE_K(48)>;
+		};
+
+		storage_partition: partition@177000 {
+			label = "storage";
+			reg = <0x177000 DT_SIZE_K(24)>;
+		};
+	};
+};

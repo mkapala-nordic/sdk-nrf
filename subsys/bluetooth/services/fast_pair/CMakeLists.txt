@@ -51,7 +51,8 @@ if(NOT SYSBUILD)
     ${CMAKE_BINARY_DIR}/modules/nrf/subsys/bluetooth/services/fast_pair/fp_provisioning_data.hex
     )
 
-  set(FP_PROVISIONING_DATA_ADDRESS $<TARGET_PROPERTY:partition_manager,PM_BT_FAST_PAIR_ADDRESS>)
+  # set(FP_PROVISIONING_DATA_ADDRESS $<TARGET_PROPERTY:partition_manager,PM_BT_FAST_PAIR_ADDRESS>)
+  set(FP_PROVISIONING_DATA_ADDRESS 0x16b000)
 
   if(NOT DEFINED FP_MODEL_ID OR NOT DEFINED FP_ANTI_SPOOFING_KEY)
     message(FATAL_ERROR "FP_MODEL_ID and FP_ANTI_SPOOFING_KEY build variables must be specified.")
@@ -60,8 +61,8 @@ if(NOT SYSBUILD)
   add_custom_command(
     OUTPUT
     ${FP_PROVISIONING_DATA_HEX}
-    DEPENDS
-    "${CMAKE_BINARY_DIR}/pm.config"
+    # DEPENDS
+    # "${CMAKE_BINARY_DIR}/pm.config"
     COMMAND
     ${PYTHON_EXECUTABLE} ${ZEPHYR_NRF_MODULE_DIR}/scripts/nrf_provision/fast_pair/fp_provision_cli.py
                          -o ${FP_PROVISIONING_DATA_HEX} -a ${FP_PROVISIONING_DATA_ADDRESS}

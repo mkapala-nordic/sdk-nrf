@@ -8,7 +8,7 @@
 #include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/storage/flash_map.h>
-#include <pm_config.h>
+// #include <pm_config.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(fast_pair, CONFIG_BT_FAST_PAIR_LOG_LEVEL);
@@ -18,8 +18,10 @@ LOG_MODULE_DECLARE(fast_pair, CONFIG_BT_FAST_PAIR_LOG_LEVEL);
 #include "fp_crypto.h"
 #include "fp_registration_data.h"
 
-#define FP_PARTITION_ID		PM_BT_FAST_PAIR_ID
-#define FP_PARTITION_SIZE	PM_BT_FAST_PAIR_SIZE
+// #define FP_PARTITION_ID		PM_BT_FAST_PAIR_ID
+// #define FP_PARTITION_SIZE	PM_BT_FAST_PAIR_SIZE
+#define FP_PARTITION_ID		FIXED_PARTITION_ID(bt_fast_pair_partition)
+#define FP_PARTITION_SIZE	FIXED_PARTITION_SIZE(bt_fast_pair_partition)
 
 static const uint8_t fp_magic[] = {0xFA, 0x57, 0xFA, 0x57};
 
@@ -125,14 +127,25 @@ static int fp_registration_data_validate(void)
 	err = flash_area_open(FP_PARTITION_ID, &fa);
 	if (!err) {
 		err = flash_area_read(fa, FP_DATA_START, data, FP_DATA_SIZE);
+	} else {
+		LOG_ERR("flash_area_open");
 	}
 
 	if (!err) {
+		LOG_HEXDUMP_WRN(data, sizeof(data), "fp partition");
 		err = validate_fp_magic(&data[FP_OFFSET_TO_DATA_IDX(FP_MAGIC_OFF)]);
+	} else {
+		LOG_ERR("flash_area_read");
 	}
 
 	if (!err) {
 		err = validate_fp_hash(data, &data[FP_OFFSET_TO_DATA_IDX(FP_HASH_OFF)]);
+	} else {
+		LOG_ERR("validate_fp_magic");
+	}
+
+	if (err) {
+		LOG_ERR("validate_fp_hash");
 	}
 
 	if (fa) {
