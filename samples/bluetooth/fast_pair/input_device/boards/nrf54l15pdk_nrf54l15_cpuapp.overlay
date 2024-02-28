@@ -26,17 +26,17 @@
 
 		slot0_partition: partition@0 {
 			label = "image-0";
-			reg = <0x0 DT_SIZE_K(1452)>;
+			reg = <0x0 DT_SIZE_K(1472)>;
 		};
 
-                bt_fast_pair_partition: partition@16b000 {
-			label = "bt_fast_pair";
-			reg = <0x16b000 DT_SIZE_K(48)>;
-		};
-
-		storage_partition: partition@177000 {
+		storage_partition: partition@170000 {
 			label = "storage";
-			reg = <0x177000 DT_SIZE_K(24)>;
+			reg = <0x170000 DT_SIZE_K(48)>;
+		};
+
+		bt_fast_pair_partition: partition@17cfb8 {
+			label = "bt_fast_pair";
+			reg = <0x17cfb8 0x48>;
 		};
 	};
 };
