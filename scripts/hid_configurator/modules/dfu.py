@@ -169,10 +169,6 @@ def b0_is_dfu_file_correct(dfu_bin):
     return True
 
 
-def b0_get_dfu_image_name(dfu_slot_id):
-    return 'signed_by_b0_s{}_image.bin'.format(dfu_slot_id)
-
-
 def b0_get_dfu_image_version(dfu_bin):
     fwinfo_offset = b0_get_fwinfo_offset(dfu_bin)
     if fwinfo_offset is None:
@@ -221,45 +217,66 @@ def mcuboot_common_get_dfu_image_version(dfu_bin):
     return ver
 
 
-def mcuboot_get_dfu_image_name(dfu_slot_id):
-    return 'app_update.bin'
-
-
 def mcuboot_get_dfu_image_bootloader_var():
     return 'MCUBOOT'
-
-
-def mcuboot_xip_get_dfu_image_name(dfu_slot_id):
-    assert dfu_slot_id in (0, 1)
-
-    if dfu_slot_id == 0:
-        return 'app_update.bin'
-    else:
-        return 'mcuboot_secondary_app_update.bin'
 
 
 def mcuboot_xip_get_dfu_image_bootloader_var():
     return 'MCUBOOT+XIP'
 
 
+def common_get_dfu_image_name(manifest_json, dfu_slot_id):
+    files = manifest_json['files']
+    files_length = len(files)
+
+    # Currently only up to 2 files are supported (one file for each slot)
+    if files_length == 0 or files_length > 2:
+        return None
+
+    if files_length == 1:
+        return files[0]['file'] if 'file' in files[0] else None
+
+    name = None
+    load_address = None
+    comp_func = None
+
+    if dfu_slot_id == 0:
+        load_address = 0xFFFFFFFF
+        comp_func = lambda x, y: x < y
+    else:
+        load_address = 0
+        comp_func = lambda x, y: x > y
+
+    for f in files:
+        if 'file' not in f and "load_address" not in f:
+            # Invalid manifest
+            return None
+
+        if comp_func(f['load_address'], load_address):
+            load_address = f['load_address']
+            name = f['file']
+
+    return name
+
+
 B0_API = {
     'get_dfu_image_version' : b0_get_dfu_image_version,
     'get_dfu_image_bootloader_var' : b0_get_dfu_image_bootloader_var,
-    'get_dfu_image_name' : b0_get_dfu_image_name,
+    'get_dfu_image_name' : common_get_dfu_image_name,
     'is_dfu_file_correct' : b0_is_dfu_file_correct,
 }
 
 MCUBOOT_API = {
     'get_dfu_image_version' : mcuboot_common_get_dfu_image_version,
     'get_dfu_image_bootloader_var' : mcuboot_get_dfu_image_bootloader_var,
-    'get_dfu_image_name' : mcuboot_get_dfu_image_name,
+    'get_dfu_image_name' : common_get_dfu_image_name,
     'is_dfu_file_correct' : mcuboot_common_is_dfu_file_correct,
 }
 
 MCUBOOT_XIP_API = {
     'get_dfu_image_version' : mcuboot_common_get_dfu_image_version,
     'get_dfu_image_bootloader_var' : mcuboot_xip_get_dfu_image_bootloader_var,
-    'get_dfu_image_name' : mcuboot_xip_get_dfu_image_name,
+    'get_dfu_image_name' : common_get_dfu_image_name,
     'is_dfu_file_correct' : mcuboot_common_is_dfu_file_correct,
 }
 
@@ -376,30 +393,27 @@ class DfuImage:
             return None
         dfu_slot_id = 1 - flash_area_id
 
-        dfu_image_name = bootloader_api['get_dfu_image_name'](dfu_slot_id)
+        dfu_image_name = bootloader_api['get_dfu_image_name'](manifest['files'], dfu_slot_id)
         dfu_bin_path = None
 
-        for f in manifest['files']:
-            if f['file'] != dfu_image_name:
-                continue
+        if dfu_image_name == None:
+            return None
 
-            if DfuImage._get_config_channel_board_name(f['board']) != dev_board_name:
-                continue
+        if DfuImage._get_config_channel_board_name(f['board']) != dev_board_name:
+            return None
 
-            dfu_bin_path = os.path.join(dfu_folder, f['file'])
+        dfu_bin_path = os.path.join(dfu_folder, dfu_image_name)
 
-            if not DfuImage._is_dfu_file_correct(dfu_bin_path):
-                continue
+        if not DfuImage._is_dfu_file_correct(dfu_bin_path):
+            return None
 
-            if not bootloader_api['is_dfu_file_correct'](dfu_bin_path):
-                continue
+        if not bootloader_api['is_dfu_file_correct'](dfu_bin_path):
+            return None
 
-            if (dev_bootloader_variant != bootloader_api['get_dfu_image_bootloader_var']()) and (dev_bootloader_variant is not None):
-                continue
+        if (dev_bootloader_variant != bootloader_api['get_dfu_image_bootloader_var']()) and (dev_bootloader_variant is not None):
+            return None
 
-            return dfu_bin_path
-
-        return None
+        return dfu_bin_path
 
     def get_dfu_image_bin_path(self):
         return self.image_bin_path
