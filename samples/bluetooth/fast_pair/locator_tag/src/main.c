@@ -47,6 +47,20 @@ LOG_MODULE_REGISTER(fp_fmdn, LOG_LEVEL_INF);
 /* FMDN advertising interval 2s (0x0C80 in hex). */
 #define FMDN_ADV_INTERVAL (0x0C80)
 
+/* TODO:
+ * Theoretically COULD be replaced with the "#include <bluetooth/services/dfu_smp.h>"
+ * but we do not use this service as we use the "zephyr/subsys/mgmt/mcumgr/transport/src/smp_bt.c"
+ * instead.
+ * Currently there is no header with the UUID at the Zephyr level.
+ * Maybe it should be moved at the Zephyr level from smp_bt.c to the "zephyr/mgmt/mcumgr/transport/smp_bt.h".
+ */
+
+/* UUID of the SMP characteristic used for the DFU. */
+#define BT_UUID_SMP_CHAR_VAL	\
+	BT_UUID_128_ENCODE(0xda2e7828, 0xfbce, 0x4e01, 0xae9e, 0x261174997c48)
+
+#define BT_UUID_SMP_CHAR	BT_UUID_DECLARE_128(BT_UUID_SMP_CHAR_VAL)
+
 /* Factory reset reason. */
 enum factory_reset_trigger {
 	FACTORY_RESET_TRIGGER_NONE,
@@ -106,7 +120,15 @@ static const struct bt_conn_auth_cb conn_auth_callbacks = {
 	.pairing_accept = pairing_accept,
 };
 
-static bool identifying_info_read_allow(struct bt_conn *conn)
+static void print_characteristic_uuid(const struct bt_uuid *uuid)
+{
+	char uuid_str[37];
+
+	bt_uuid_to_str(uuid, uuid_str, sizeof(uuid_str));
+	LOG_INF("Characteristic UUID: %s", uuid_str);
+}
+
+static bool identifying_info_allow(struct bt_conn *conn)
 {
 	ARG_UNUSED(conn);
 
@@ -118,8 +140,6 @@ static bool identifying_info_read_allow(struct bt_conn *conn)
 		return true;
 	}
 
-	LOG_INF("Rejecting read operation of identifying information");
-
 	return false;
 }
 
@@ -129,6 +149,7 @@ static bool gatt_read_authorize(struct bt_conn *conn, const struct bt_gatt_attr 
 		/* GAP service characteristics */
 		BT_UUID_GAP_DEVICE_NAME,
 	};
+	bool allow = true;
 
 	for (size_t i = 0; i < ARRAY_SIZE(uuid_block_list); i++) {
 		if (bt_uuid_cmp(attr->uuid, uuid_block_list[i]) == 0) {
@@ -136,15 +157,53 @@ static bool gatt_read_authorize(struct bt_conn *conn, const struct bt_gatt_attr 
 			 * The Provider shouldn't expose any identifying information
 			 * in an unauthenticated manner (e.g. names or identifiers).
 			 */
-			return identifying_info_read_allow(conn);
+
+			print_characteristic_uuid(attr->uuid);
+
+			allow = identifying_info_allow(conn);
+			if (!allow) {
+				LOG_INF("Rejecting read operation of identifying information");
+			}
+
+			break;
 		}
 	}
 
-	return true;
+	return allow;
+}
+
+static bool gatt_write_authorize(struct bt_conn *conn, const struct bt_gatt_attr *attr)
+{
+	const struct bt_uuid *uuid_block_list[] = {
+		/* SMP service characteristics */
+		BT_UUID_SMP_CHAR,
+	};
+	bool allow = true;
+
+	for (size_t i = 0; i < ARRAY_SIZE(uuid_block_list); i++) {
+		if (bt_uuid_cmp(attr->uuid, uuid_block_list[i]) == 0) {
+			/* Fast Pair Implementation Guidelines for the locator tag use case:
+			 * The Provider shouldn't expose any identifying information
+			 * in an unauthenticated manner (e.g. names or identifiers).
+			 */
+
+			print_characteristic_uuid(attr->uuid);
+
+			allow = identifying_info_allow(conn);
+			if (!allow) {
+				LOG_INF("Rejecting write operation of identifying information");
+			}
+
+			break;
+		}
+	}
+
+	return allow;
 }
 
 static const struct bt_gatt_authorization_cb gatt_authorization_callbacks = {
 	.read_authorize = gatt_read_authorize,
+	.write_authorize = gatt_write_authorize,
 };
 
 static void fp_account_key_written(struct bt_conn *conn)
@@ -550,6 +609,10 @@ int main(void)
 	int err;
 
 	LOG_INF("Starting Bluetooth Fast Pair locator tag example");
+
+#ifdef CONFIG_BOOTLOADER_MCUBOOT
+		LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
+#endif
 
 	/* Switch to the cooperative thread context before interaction
 	 * with the Fast Pair and FMDN API.

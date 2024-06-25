@@ -4,7 +4,25 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-source "${ZEPHYR_BASE}/share/sysbuild/Kconfig"
+# TODO: ADD REMAINING sysbuild.conf files!!!
 
-config NRF_DEFAULT_IPC_RADIO
+# config BT_FAST_PAIR
+# 	default y
+
+# config NRF_DEFAULT_IPC_RADIO
+# 	default y
+
+# choice BOOTLOADER
+# 	default BOOTLOADER_MCUBOOT
+# endchoice
+
+# choice MCUBOOT_MODE
+# 	default MCUBOOT_MODE_DIRECT_XIP if (SOC_SERIES_NRF52X || SOC_SERIES_NRF54LX)
+# endchoice
+
+config APP_DFU
+	bool "Enable DFU over MCUmgr & SMP BT"
 	default y
+	depends on BOOTLOADER_MCUBOOT
+
+source "${ZEPHYR_BASE}/share/sysbuild/Kconfig"

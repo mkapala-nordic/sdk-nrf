@@ -1,0 +1,60 @@
+#
+# Copyright (c) 2024 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+config APP_DFU
+        bool "MCUmgr & SMP BT DFU support"
+        select MCUMGR
+	select NET_BUF
+	select ZCBOR
+	select CRC
+	select MCUMGR_TRANSPORT_BT
+	imply MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL
+	imply IMG_MANAGER
+	imply STREAM_FLASH
+	imply FLASH_MAP
+	imply FLASH
+	imply MCUMGR_GRP_IMG
+	imply MCUMGR_GRP_OS
+	imply MCUMGR_GRP_OS_BOOTLOADER_INFO
+	imply MCUMGR_TRANSPORT_BT_REASSEMBLY
+        depends on BOOTLOADER_MCUBOOT
+        help
+          Enable support for Device Firmware Update (DFU) over MCUmgr & SMP BT.
+
+if APP_DFU
+
+config MCUMGR_TRANSPORT_BT_DYNAMIC_SVC_REGISTRATION
+        default n
+
+config MCUMGR_TRANSPORT_BT_AUTHEN
+	default n
+
+config IMG_ERASE_PROGRESSIVELY
+	default y
+
+if MCUMGR_TRANSPORT_BT_REASSEMBLY
+
+config MCUMGR_TRANSPORT_NETBUF_SIZE
+	default 2475
+
+config MCUMGR_GRP_OS_MCUMGR_PARAMS
+	default y
+
+endif # MCUMGR_TRANSPORT_BT_REASSEMBLY
+
+config BT_L2CAP_TX_MTU
+	default 498 if BT_HCI_HOST
+
+config BT_BUF_ACL_TX_SIZE
+	default 251
+
+config BT_BUF_ACL_RX_SIZE
+	default 502
+
+config BT_CTLR_DATA_LENGTH_MAX
+	default 251 if BT_CTLR
+
+endif # APP_DFU
