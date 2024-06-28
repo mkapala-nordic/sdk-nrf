@@ -20,6 +20,8 @@ config APP_DFU
 	imply MCUMGR_GRP_OS
 	imply MCUMGR_GRP_OS_BOOTLOADER_INFO
 	imply MCUMGR_TRANSPORT_BT_REASSEMBLY
+	imply MCUMGR_MGMT_NOTIFICATION_HOOKS
+	imply MCUMGR_SMP_COMMAND_STATUS_HOOKS
         depends on BOOTLOADER_MCUBOOT
         help
           Enable support for Device Firmware Update (DFU) over MCUmgr & SMP BT.

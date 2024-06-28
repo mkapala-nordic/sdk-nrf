@@ -18,6 +18,7 @@
 
 #include "app_fp_adv.h"
 #include "app_ui.h"
+#include "app_smp_adv_prov.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_DECLARE(fp_fmdn, LOG_LEVEL_INF);
@@ -31,6 +32,7 @@ LOG_MODULE_DECLARE(fp_fmdn, LOG_LEVEL_INF);
 #define FP_RPA_TIMEOUT_OFFSET_MAX	(2 * FP_RPA_SEC_PER_MIN)
 
 static bool fmdn_provisioned;
+static bool dfu_mode;
 
 static struct bt_conn *fp_conn;
 static struct bt_le_ext_adv *fp_adv_set;
@@ -111,9 +113,11 @@ static void fp_adv_prov_configure(enum app_fp_adv_mode fp_adv_mode)
 
 	switch (fp_adv_mode) {
 	case APP_FP_ADV_MODE_DISCOVERABLE:
+		dfu_mode ? app_smp_adv_prov_ad_enable() : app_smp_adv_prov_disable();
 		break;
 
 	case APP_FP_ADV_MODE_NOT_DISCOVERABLE:
+		dfu_mode ? app_smp_adv_prov_sd_enable() : app_smp_adv_prov_disable();
 		bt_le_adv_prov_fast_pair_enable(true);
 		bt_le_adv_prov_fast_pair_show_ui_pairing(false);
 		break;
@@ -477,6 +481,11 @@ static void fp_adv_request_handle(enum app_ui_request request)
 
 		fp_advertising_start();
 	}
+}
+
+void app_fp_adv_smp_enable(bool enable)
+{
+	dfu_mode = enable;
 }
 
 int app_fp_adv_id_set(uint8_t id)

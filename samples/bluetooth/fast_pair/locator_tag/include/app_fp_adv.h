@@ -32,6 +32,8 @@ enum app_fp_adv_mode {
 	APP_FP_ADV_MODE_NOT_DISCOVERABLE,
 };
 
+void app_fp_adv_smp_enable(bool enable);
+
 /** Set the Fast Pair advertising mode.
  *
  * @param adv_mode Fast Pair advertising mode.

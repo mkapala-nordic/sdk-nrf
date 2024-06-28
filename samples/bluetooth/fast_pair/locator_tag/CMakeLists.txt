@@ -26,6 +26,7 @@ target_sources(app PRIVATE
   src/main.c
   src/factory_reset.c
   src/fp_adv.c
+  src/smp_adv_prov.c
 )
 
 if (NOT CONFIG_BT_FAST_PAIR_FMDN_RING_COMP_NONE)

@@ -11,6 +11,9 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/uuid.h>
 
+#include <zephyr/mgmt/mcumgr/grp/os_mgmt/os_mgmt.h>
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
+
 #include <bluetooth/services/fast_pair/fast_pair.h>
 #include <bluetooth/services/fast_pair/fmdn.h>
 
@@ -19,6 +22,7 @@
 #include "app_fp_adv.h"
 #include "app_ring.h"
 #include "app_ui.h"
+#include "app_smp_adv_prov.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(fp_fmdn, LOG_LEVEL_INF);
@@ -40,6 +44,9 @@ LOG_MODULE_REGISTER(fp_fmdn, LOG_LEVEL_INF);
 
 /* FMDN identification mode timeout in minutes. */
 #define FMDN_ID_MODE_TIMEOUT (CONFIG_DULT_ID_READ_STATE_TIMEOUT)
+
+/* FMDN DFU mode timeout in minutes. */
+#define DFU_MODE_TIMEOUT (1)
 
 /* Minimum button hold time in milliseconds to trigger the FMDN recovery mode. */
 #define FMDN_RECOVERY_MODE_BTN_MIN_HOLD_TIME_MS (3000)
@@ -71,6 +78,7 @@ enum factory_reset_trigger {
 static bool fmdn_provisioned;
 static bool fmdn_recovery_mode;
 static bool fmdn_id_mode;
+static bool dfu_mode;
 static bool fp_account_key_present;
 
 static bool factory_reset_executed;
@@ -80,6 +88,10 @@ static void init_work_handle(struct k_work *w);
 
 static K_SEM_DEFINE(init_work_sem, 0, 1);
 static K_WORK_DEFINE(init_work, init_work_handle);
+
+static void dfu_mode_timeout_work_handle(struct k_work *w);
+
+static K_WORK_DELAYABLE_DEFINE(dfu_mode_timeout_work, dfu_mode_timeout_work_handle);
 
 static void fmdn_factory_reset_executed(void)
 {
@@ -125,7 +137,7 @@ static void print_characteristic_uuid(const struct bt_uuid *uuid)
 	char uuid_str[37];
 
 	bt_uuid_to_str(uuid, uuid_str, sizeof(uuid_str));
-	LOG_INF("Characteristic UUID: %s", uuid_str);
+	LOG_DBG("Characteristic UUID: %s", uuid_str);
 }
 
 static bool identifying_info_allow(struct bt_conn *conn)
@@ -140,16 +152,30 @@ static bool identifying_info_allow(struct bt_conn *conn)
 		return true;
 	}
 
+	LOG_INF("Rejecting operation on the identifying information");
+
 	return false;
 }
 
-static bool gatt_read_authorize(struct bt_conn *conn, const struct bt_gatt_attr *attr)
+static bool gatt_authorize(struct bt_conn *conn, const struct bt_gatt_attr *attr)
 {
 	const struct bt_uuid *uuid_block_list[] = {
 		/* GAP service characteristics */
 		BT_UUID_GAP_DEVICE_NAME,
 	};
-	bool allow = true;
+
+	/* Access to the SMP serivce is allowed only when the DFU mode is active. */
+	if (bt_uuid_cmp(attr->uuid, BT_UUID_SMP_CHAR) == 0) {
+		print_characteristic_uuid(attr->uuid);
+
+		if (!dfu_mode) {
+			LOG_INF("Rejecting operation on the SMP characteristic");
+
+			return false;
+		}
+
+		return true;
+	}
 
 	for (size_t i = 0; i < ARRAY_SIZE(uuid_block_list); i++) {
 		if (bt_uuid_cmp(attr->uuid, uuid_block_list[i]) == 0) {
@@ -160,50 +186,16 @@ static bool gatt_read_authorize(struct bt_conn *conn, const struct bt_gatt_attr 
 
 			print_characteristic_uuid(attr->uuid);
 
-			allow = identifying_info_allow(conn);
-			if (!allow) {
-				LOG_INF("Rejecting read operation of identifying information");
-			}
-
-			break;
+			return identifying_info_allow(conn);
 		}
 	}
 
-	return allow;
-}
-
-static bool gatt_write_authorize(struct bt_conn *conn, const struct bt_gatt_attr *attr)
-{
-	const struct bt_uuid *uuid_block_list[] = {
-		/* SMP service characteristics */
-		BT_UUID_SMP_CHAR,
-	};
-	bool allow = true;
-
-	for (size_t i = 0; i < ARRAY_SIZE(uuid_block_list); i++) {
-		if (bt_uuid_cmp(attr->uuid, uuid_block_list[i]) == 0) {
-			/* Fast Pair Implementation Guidelines for the locator tag use case:
-			 * The Provider shouldn't expose any identifying information
-			 * in an unauthenticated manner (e.g. names or identifiers).
-			 */
-
-			print_characteristic_uuid(attr->uuid);
-
-			allow = identifying_info_allow(conn);
-			if (!allow) {
-				LOG_INF("Rejecting write operation of identifying information");
-			}
-
-			break;
-		}
-	}
-
-	return allow;
+	return true;
 }
 
 static const struct bt_gatt_authorization_cb gatt_authorization_callbacks = {
-	.read_authorize = gatt_read_authorize,
-	.write_authorize = gatt_write_authorize,
+	.read_authorize = gatt_authorize,
+	.write_authorize = gatt_authorize,
 };
 
 static void fp_account_key_written(struct bt_conn *conn)
@@ -334,6 +326,85 @@ static void fmdn_id_mode_action_handle(void)
 	app_ui_state_change_indicate(APP_UI_STATE_ID_MODE, fmdn_id_mode);
 }
 
+static enum mgmt_cb_return smp_cmd_recv(uint32_t event, enum mgmt_cb_return prev_status,
+					int32_t *rc, uint16_t *group, bool *abort_more,
+					void *data, size_t data_size)
+{
+	const struct mgmt_evt_op_cmd_arg *cmd_recv;
+
+	if (event != MGMT_EVT_OP_CMD_RECV) {
+		LOG_ERR("Spurious event in recv cb: %" PRIu32, event);
+		*rc = MGMT_ERR_EUNKNOWN;
+		return MGMT_CB_ERROR_RC;
+	}
+
+	LOG_DBG("MCUmgr SMP Command Recv Event");
+
+	if (data_size != sizeof(*cmd_recv)) {
+		LOG_ERR("Invalid data size in recv cb: %zu (expected: %zu)",
+			data_size, sizeof(*cmd_recv));
+		*rc = MGMT_ERR_EUNKNOWN;
+		return MGMT_CB_ERROR_RC;
+	}
+
+	cmd_recv = data;
+
+	/* Ignore commands not related to DFU over SMP. */
+	if (!(cmd_recv->group == MGMT_GROUP_ID_IMAGE) &&
+	    !((cmd_recv->group == MGMT_GROUP_ID_OS) && (cmd_recv->id == OS_MGMT_ID_RESET))) {
+		return MGMT_CB_OK;
+	}
+
+	LOG_DBG("MCUmgr %s event", (cmd_recv->group == MGMT_GROUP_ID_IMAGE) ?
+		"Image Management" : "OS Management Reset");
+
+	k_work_reschedule(&dfu_mode_timeout_work, K_MINUTES(DFU_MODE_TIMEOUT));
+
+	return MGMT_CB_OK;
+}
+
+static struct mgmt_callback cmd_recv_cb = {
+	.callback = smp_cmd_recv,
+	.event_id = MGMT_EVT_OP_CMD_RECV,
+};
+
+static void dfu_init(void)
+{
+	mgmt_callback_register(&cmd_recv_cb);
+}
+
+static void dfu_mode_action_handle(void)
+{
+	if (dfu_mode) {
+		LOG_INF("DFU: refreshing the DFU mode timeout");
+	} else {
+		LOG_INF("DFU: entering the DFU mode for %d minute(s)",
+			DFU_MODE_TIMEOUT);
+	}
+
+	k_work_reschedule(&dfu_mode_timeout_work, K_MINUTES(DFU_MODE_TIMEOUT));
+
+	dfu_mode = true;
+
+	app_fp_adv_smp_enable(dfu_mode);
+	app_fp_adv_mode_set(fmdn_provisioned ?
+			    APP_FP_ADV_MODE_NOT_DISCOVERABLE :
+			    APP_FP_ADV_MODE_DISCOVERABLE);
+
+	app_ui_state_change_indicate(APP_UI_STATE_DFU_MODE, dfu_mode);
+}
+
+static void dfu_mode_timeout_work_handle(struct k_work *w)
+{
+	LOG_INF("DFU: timeout expired");
+
+	dfu_mode = false;
+	app_fp_adv_smp_enable(dfu_mode);
+	app_fp_adv_mode_set(APP_FP_ADV_MODE_OFF);
+
+	app_ui_state_change_indicate(APP_UI_STATE_DFU_MODE, dfu_mode);
+}
+
 static void fmdn_mode_request_handle(enum app_ui_request request)
 {
 	/* It is assumed that the callback executes in the cooperative
@@ -346,6 +417,8 @@ static void fmdn_mode_request_handle(enum app_ui_request request)
 		fmdn_recovery_mode_action_handle();
 	} else if (request == APP_UI_REQUEST_ID_MODE_ENTER) {
 		fmdn_id_mode_action_handle();
+	} else if (request == APP_UI_REQUEST_DFU_MODE_ENTER) {
+		dfu_mode_action_handle();
 	}
 }
 
@@ -601,6 +674,8 @@ static void init_work_handle(struct k_work *w)
 		return;
 	}
 
+	dfu_init();
+
 	k_sem_give(&init_work_sem);
 }
 
@@ -611,7 +686,7 @@ int main(void)
 	LOG_INF("Starting Bluetooth Fast Pair locator tag example");
 
 #ifdef CONFIG_BOOTLOADER_MCUBOOT
-		LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
+	LOG_INF("Firmware version: %s", CONFIG_MCUBOOT_IMGTOOL_SIGN_VERSION);
 #endif
 
 	/* Switch to the cooperative thread context before interaction

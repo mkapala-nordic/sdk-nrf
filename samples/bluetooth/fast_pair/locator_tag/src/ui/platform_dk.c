@@ -20,6 +20,9 @@ LOG_MODULE_DECLARE(fp_fmdn, LOG_LEVEL_DBG);
 /* Minimum button hold time in milliseconds to trigger the FMDN recovery mode. */
 #define RECOVERY_MODE_BTN_MIN_HOLD_TIME_MS	3000
 
+/* Minimum button hold time in milliseconds to trigger the DFU mode. */
+#define DFU_MODE_BTN_MIN_HOLD_TIME_MS		5000
+
 /* Run status LED blinking interval. */
 #define RUN_LED_BLINK_INTERVAL_MS		1000
 
@@ -99,7 +102,9 @@ static void btn_handle(uint32_t button_state, uint32_t has_changed)
 			 */
 			if (prev_uptime != 0) {
 				hold_time = (k_uptime_get() - prev_uptime);
-				if (hold_time > RECOVERY_MODE_BTN_MIN_HOLD_TIME_MS) {
+				if (hold_time > DFU_MODE_BTN_MIN_HOLD_TIME_MS) {
+					app_ui_request_broadcast(APP_UI_REQUEST_DFU_MODE_ENTER);
+				} else if (hold_time > RECOVERY_MODE_BTN_MIN_HOLD_TIME_MS) {
 					app_ui_request_broadcast(
 						APP_UI_REQUEST_RECOVERY_MODE_ENTER);
 				} else {
@@ -246,6 +251,7 @@ int app_ui_state_change_indicate(enum app_ui_state state, bool active)
 		[APP_UI_STATE_ID_MODE] = APP_MODE_LED,
 		[APP_UI_STATE_PROVISIONED] = APP_PROVISIONED_LED,
 		[APP_UI_STATE_FP_ADV] = NO_LED,
+		[APP_UI_STATE_DFU_MODE] = NO_LED,
 	};
 
 	__ASSERT_NO_MSG(state < APP_UI_STATE_COUNT);
