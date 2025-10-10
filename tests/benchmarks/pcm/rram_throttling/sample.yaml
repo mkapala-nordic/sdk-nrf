@@ -1,0 +1,25 @@
+sample:
+  name: RRAM throttling test
+
+tests:
+  tests.benchmarks.rram_throttling.off:
+    platform_allow:
+      - nrf54lv10dk/nrf54lv10a/cpuapp
+    integration_platforms:
+      - nrf54lv10dk/nrf54lv10a/cpuapp
+
+  tests.benchmarks.rram_throttling.on.8blocks:
+    platform_allow:
+      - nrf54lv10dk/nrf54lv10a/cpuapp
+    integration_platforms:
+      - nrf54lv10dk/nrf54lv10a/cpuapp
+    extra_args:
+      - FILE_SUFFIX=on_8blocks
+
+  tests.benchmarks.rram_throttling.on.16blocks:
+    platform_allow:
+      - nrf54lv10dk/nrf54lv10a/cpuapp
+    integration_platforms:
+      - nrf54lv10dk/nrf54lv10a/cpuapp
+    extra_args:
+      - FILE_SUFFIX=on_16blocks
