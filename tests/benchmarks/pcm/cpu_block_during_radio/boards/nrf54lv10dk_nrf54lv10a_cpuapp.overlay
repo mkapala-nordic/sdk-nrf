@@ -1,0 +1,37 @@
+/*
+ * Copyright (c) 2025 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/ {
+	timestamps {
+		compatible = "gpio-leds";
+		timestamp0: timestamp_0 {
+			gpios = < &gpio1 15 GPIO_ACTIVE_HIGH >;
+			label = "Timestamp 0 GPIO - app";
+		};
+
+		timestamp1: timestamp_1 {
+			gpios = < &gpio1 16 GPIO_ACTIVE_HIGH >;
+			label = "Timestamp 1 GPIO - app";
+		};
+
+		timestamp2: timestamp_2 {
+			gpios = < &gpio1 17 GPIO_ACTIVE_HIGH >;
+			label = "Timestamp 2 GPIO - radio events";
+		};
+
+		timestamp3: timestamp_3 {
+			gpios = < &gpio1 18 GPIO_ACTIVE_HIGH >;
+			label = "Timestamp 3 GPIO - radio events";
+		};
+	};
+
+	aliases {
+		timestamp0 = &timestamp0;
+		timestamp1 = &timestamp1;
+		timestamp2 = &timestamp2;
+		timestamp3 = &timestamp3;
+	};
+};
