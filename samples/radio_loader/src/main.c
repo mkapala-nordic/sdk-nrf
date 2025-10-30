@@ -19,8 +19,13 @@
   
 int main(void)
 {
-	// Should never reach here
+	/* Should never reach here - firmware jump must have failed */
+#ifdef CONFIG_PRINTK
 	printk("ERROR: Firmware jump failed!\n");
+#endif
+	while (1) {
+		/* Hang here if jump fails */
+	}
 	return -1;
 }
  
