@@ -1,0 +1,19 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+source "Kconfig.zephyr"
+
+choice RADIO_LOADER_MODE
+	prompt "Radio loader mode"
+	default RADIO_LOADER_MODE_COPY
+
+config RADIO_LOADER_MODE_COPY
+	bool "Copy mode - copy the firmware to the TCM from the radio loader"
+
+config RADIO_LOADER_MODE_MPC
+	bool "MPC mode - let app core image copy the firmware to the TCM, just configure the MPC and jump"
+
+endchoice
