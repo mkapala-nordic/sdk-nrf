@@ -1,0 +1,63 @@
+/*
+ * Copyright (c) 2025 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+/*
+ * Common memory map configuration for cpurad
+ * Shared between remote firmware and radio_loader
+ */
+
+/{
+	soc{
+		// cpurad_data_ram: sram@23020000 {
+		// 	compatible = "mmio-sram";
+		// 	reg = < 0x23020000 0x10000 >;
+		// 	#address-cells = < 0x1 >;
+		// 	#size-cells = < 0x1 >;
+		// 	ranges = < 0x0 0x23020000 0x10000 >;
+		// };
+
+		cpurad_data_ram: sram@2f029000 {
+			compatible = "mmio-sram";
+			reg = < 0x2f029000 0x10000 >;
+			#address-cells = < 0x1 >;
+			#size-cells = < 0x1 >;
+			ranges = < 0x0 0x2f029000 0x10000 >;
+		};
+	};
+};
+
+// &cpurad_ram0 {
+// 	compatible = "mmio-sram";
+// 	/delete-property/ reg;
+// 	reg = < 0x23000000 0x20000 >;
+// 	ranges = < 0x0 0x23000000 0x20000 >;
+// };
+
+&cpurad_ram0 {
+	compatible = "mmio-sram";
+	/delete-property/ reg;
+	reg = < 0x23000000 0x30000 >;
+	ranges = < 0x0 0x23000000 0x30000 >;
+};
+
+&{/soc/mram@e000000/partitions} {
+	// Remove the old cpurad_slot0_partition definition
+	/delete-node/ cpurad_slot0_partition;
+
+	// Add new partition for loader
+	cpurad_loader_partition: partition@92000 {
+		label = "cpurad_loader_partition";
+		reg = <0x92000 DT_SIZE_K(92)>;
+	};
+
+	// Add new partition for loaded firmware
+	cpurad_loaded_fw: partition@a9000 {
+		label = "cpurad_loaded_fw";
+		// Size: 128KB (0x20000) for firmware image
+		reg = <0xa9000 0x30000>;
+	};
+};
+

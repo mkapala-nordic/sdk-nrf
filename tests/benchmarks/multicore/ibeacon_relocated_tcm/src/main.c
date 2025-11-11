@@ -19,6 +19,10 @@ LOG_MODULE_REGISTER(ibeacon);
 #define IBEACON_RSSI 0xc8
 #endif
 
+#define ADV_INT(ms) ((uint16_t)((ms) / 0.625))
+#define BT_LE_ADV_PARAM_20MS_INTERVAL BT_LE_ADV_PARAM(0, ADV_INT(20), ADV_INT(20), NULL)
+#define BT_LE_ADV_CONN_PARAM_100MS_INT BT_LE_ADV_PARAM(BT_LE_ADV_OPT_CONN, ADV_INT(100), ADV_INT(100), NULL)
+
 /*
  * Set iBeacon demo advertisement data. These values are for
  * demonstration only and must be changed for production environments!
@@ -53,7 +57,7 @@ static void bt_ready(int err)
 	printk("Bluetooth initialized\n");
 
 	/* Start advertising */
-	err = bt_le_adv_start(BT_LE_ADV_NCONN, ad, ARRAY_SIZE(ad),
+	err = bt_le_adv_start(BT_LE_ADV_CONN_PARAM_100MS_INT, ad, ARRAY_SIZE(ad),
 			      NULL, 0);
 	if (err) {
 		printk("Advertising failed to start (err %d)\n", err);
