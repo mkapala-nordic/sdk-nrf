@@ -26,12 +26,18 @@ LOG_MODULE_REGISTER(radio_loader);
 
 void radio_tcm_mpc_configure(void)
 {
+	//todo: check which cache ops are needed and where
+	sys_cache_data_flush_and_invd_all();
+
 	NRF_RADIO_MPC->OVERRIDE[4].CONFIG = 2 | 1 << 9 | 1<<12;
 	NRF_RADIO_MPC->OVERRIDE[4].STARTADDR = LOADED_FW_RAM_ADDR;
 	NRF_RADIO_MPC->OVERRIDE[4].ENDADDR = (LOADED_FW_RAM_ADDR + LOADED_FW_RAM_SIZE);
 	NRF_RADIO_MPC->OVERRIDE[4].PERM = 0xF;
 	NRF_RADIO_MPC->OVERRIDE[4].PERMMASK = 0xF;
 	NRF_RADIO_MPC->OVERRIDE[4].OWNER = 2;
+
+	//todo: check which cache ops are needed and where
+	sys_cache_data_flush_and_invd_all();
 }
 
  static int wait_loop(void)
@@ -59,10 +65,12 @@ void radio_tcm_mpc_configure(void)
 	}
 
 	printk("Jumping to the firmware.\n");
-	k_msleep(2000);
+	// k_msleep(2000);
 
 	uint32_t *vector_table = (uint32_t *)LOADED_FW_RAM_ADDR;
 	void (*reset_handler)(void) = (void (*)(void))(vector_table[1]);
+
+	printk("Jumping to reset handler at 0x%p\n", reset_handler);
 	reset_handler();
 
 	/* should never reach here */
