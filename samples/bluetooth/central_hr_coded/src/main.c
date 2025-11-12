@@ -148,11 +148,11 @@ static void scan_filter_match(struct bt_scan_device_info *device_info,
 
 	conn_params = BT_CONN_LE_CREATE_PARAM(
 			BT_CONN_LE_OPT_CODED | BT_CONN_LE_OPT_NO_1M,
-			BT_GAP_SCAN_FAST_INTERVAL,
-			BT_GAP_SCAN_FAST_INTERVAL);
+			0x00a0,
+			0x00a0);
 
 	err = bt_conn_le_create(device_info->recv_info->addr, conn_params,
-				BT_LE_CONN_PARAM_DEFAULT,
+		BT_LE_CONN_PARAM(BT_GAP_MS_TO_CONN_INTERVAL(200), BT_GAP_MS_TO_CONN_INTERVAL(200), 0, BT_GAP_MS_TO_CONN_TIMEOUT(4000)),
 				&default_conn);
 	if (err) {
 		printk("Create conn failed (err %d)\n", err);
@@ -280,9 +280,37 @@ static void disconnected(struct bt_conn *conn, uint8_t reason)
 	}
 }
 
+static void le_param_updated(struct bt_conn *conn, uint16_t interval,
+			     uint16_t latency, uint16_t timeout)
+{
+	/* Connection interval is in units of 1.25ms */
+	/* 200ms = 200 / 1.25 = 160 = 0x00a0 */
+	uint16_t desired_interval = BT_GAP_MS_TO_CONN_INTERVAL(200);
+
+	if (interval != desired_interval && conn == default_conn) {
+		int err;
+		struct bt_le_conn_param *conn_param;
+
+		printk("Connection interval changed to %d (approx %d ms), enforcing 200ms\n",
+		       interval, (interval * 125) / 100);
+
+		/* Re-apply 200ms connection interval */
+		conn_param = BT_LE_CONN_PARAM(desired_interval, desired_interval, 0,
+					      BT_GAP_MS_TO_CONN_TIMEOUT(4000));
+
+		err = bt_conn_le_param_update(conn, conn_param);
+		if (err) {
+			printk("Failed to enforce 200ms connection interval (err %d)\n", err);
+		} else {
+			printk("Connection interval update requested: 200ms\n");
+		}
+	}
+}
+
 BT_CONN_CB_DEFINE(conn_callbacks) = {
 	.connected = connected,
 	.disconnected = disconnected,
+	.le_param_updated = le_param_updated,
 };
 
 int main(void)
