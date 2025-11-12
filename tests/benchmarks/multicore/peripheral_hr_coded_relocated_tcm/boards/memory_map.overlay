@@ -11,37 +11,37 @@
 
 /{
 	soc{
-		// cpurad_data_ram: sram@23020000 {
-		// 	compatible = "mmio-sram";
-		// 	reg = < 0x23020000 0x10000 >;
-		// 	#address-cells = < 0x1 >;
-		// 	#size-cells = < 0x1 >;
-		// 	ranges = < 0x0 0x23020000 0x10000 >;
-		// };
-
-		cpurad_data_ram: sram@2f029000 {
+		cpurad_data_ram: sram@23020000 {
 			compatible = "mmio-sram";
-			reg = < 0x2f029000 0x10000 >;
+			reg = < 0x23020000 0x10000 >;
 			#address-cells = < 0x1 >;
 			#size-cells = < 0x1 >;
-			ranges = < 0x0 0x2f029000 0x10000 >;
+			ranges = < 0x0 0x23020000 0x10000 >;
 		};
+
+		// cpurad_data_ram: sram@2f029000 {
+		// 	compatible = "mmio-sram";
+		// 	reg = < 0x2f029000 0x10000 >;
+		// 	#address-cells = < 0x1 >;
+		// 	#size-cells = < 0x1 >;
+		// 	ranges = < 0x0 0x2f029000 0x10000 >;
+		// };
 	};
+};
+
+&cpurad_ram0 {
+	compatible = "mmio-sram";
+	/delete-property/ reg;
+	reg = < 0x23000000 0x20000 >;
+	ranges = < 0x0 0x23000000 0x20000 >;
 };
 
 // &cpurad_ram0 {
 // 	compatible = "mmio-sram";
 // 	/delete-property/ reg;
-// 	reg = < 0x23000000 0x20000 >;
-// 	ranges = < 0x0 0x23000000 0x20000 >;
+// 	reg = < 0x23000000 0x30000 >;
+// 	ranges = < 0x0 0x23000000 0x30000 >;
 // };
-
-&cpurad_ram0 {
-	compatible = "mmio-sram";
-	/delete-property/ reg;
-	reg = < 0x23000000 0x30000 >;
-	ranges = < 0x0 0x23000000 0x30000 >;
-};
 
 &{/soc/mram@e000000/partitions} {
 	// Remove the old cpurad_slot0_partition definition

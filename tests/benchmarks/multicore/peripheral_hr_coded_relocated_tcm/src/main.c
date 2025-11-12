@@ -52,10 +52,12 @@ static const struct bt_data ad[] = {
 #include "../../../../../samples/radio_loader/shared_magic/shared_magic.h"
 
 #define LOADED_FW_ADDR        		0x0e0a9000
-#define LOADED_FW_SIZE        		0x30000
+// #define LOADED_FW_SIZE        		0x30000
+#define LOADED_FW_SIZE        		0x20000
 
 #define LOADED_FW_RAM_ADDR    		0x23000000
-#define LOADED_FW_RAM_SIZE    		0x30000
+// #define LOADED_FW_RAM_SIZE    		0x30000
+#define LOADED_FW_RAM_SIZE    		0x20000
 
 void radio_fw_copy(void)
 {
