@@ -148,8 +148,7 @@ static int create_advertising_coded(void)
 	struct bt_le_adv_param param =
 		BT_LE_ADV_PARAM_INIT(BT_LE_ADV_OPT_CONN |
 				     BT_LE_ADV_OPT_EXT_ADV |
-				     BT_LE_ADV_OPT_CODED |
-				     BT_LE_ADV_OPT_REQUIRE_S8_CODING,
+				     BT_LE_ADV_OPT_CODED,
 				     BT_GAP_ADV_FAST_INT_MIN_2,
 				     BT_GAP_ADV_FAST_INT_MAX_2,
 				     NULL);
@@ -254,6 +253,14 @@ int main(void)
 		printk("Advertising failed to create (err %d)\n", err);
 		return 0;
 	}
+
+	bt_addr_le_t addr;
+	size_t count = 1;
+	char addr_str[BT_ADDR_LE_STR_LEN];
+
+	bt_id_get(&addr, &count);
+	bt_addr_le_to_str(&addr, addr_str, sizeof(addr_str));
+	printk("Advertising BLE address: %s\n", addr_str);
 
 	k_work_submit(&start_advertising_worker);
 	k_work_schedule(&notify_work, K_NO_WAIT);

@@ -167,7 +167,20 @@ static void scan_filter_match(struct bt_scan_device_info *device_info,
 	printk("Connection pending\n");
 }
 
-BT_SCAN_CB_INIT(scan_cb, scan_filter_match, NULL, NULL, NULL);
+static void scan_filter_no_match(struct bt_scan_device_info *device_info, bool connectable)
+{
+	char addr[BT_ADDR_LE_STR_LEN];
+	bt_addr_le_to_str(device_info->recv_info->addr, addr, sizeof(addr));
+
+	uint8_t prim_phy = device_info->recv_info->primary_phy;
+	uint8_t sec_phy = device_info->recv_info->secondary_phy;
+
+	printk("Filter no match. Address: %s connectable: %s Primary PHY: %s Secondary PHY %s\n",
+		addr, connectable ? "yes" : "no", phy_to_str(prim_phy), phy_to_str(sec_phy));
+}
+
+
+BT_SCAN_CB_INIT(scan_cb, scan_filter_match, scan_filter_no_match, NULL, NULL);
 
 static void scan_init(void)
 {
