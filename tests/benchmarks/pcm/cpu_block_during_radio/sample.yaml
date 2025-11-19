@@ -7,3 +7,17 @@ tests:
       - nrf54lv10dk/nrf54lv10a/cpuapp
     integration_platforms:
       - nrf54lv10dk/nrf54lv10a/cpuapp
+  tests.benchmarks.cpu_block_during_radio.ns.force_rram_on:
+    platform_allow:
+      - nrf54lv10dk/nrf54lv10a/cpuapp/ns
+    integration_platforms:
+      - nrf54lv10dk/nrf54lv10a/cpuapp/ns
+    extra_args:
+      - CONFIG_MPSL_FORCE_RRAM_ON_ALL_THE_TIME=y
+  tests.benchmarks.cpu_block_during_radio.ns.force_rram_off:
+    platform_allow:
+      - nrf54lv10dk/nrf54lv10a/cpuapp/ns
+    integration_platforms:
+      - nrf54lv10dk/nrf54lv10a/cpuapp/ns
+    extra_args:
+      - CONFIG_MPSL_FORCE_RRAM_ON_ALL_THE_TIME=n
