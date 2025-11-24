@@ -33,6 +33,11 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
     dt_partition_addr(code_partition_offset PATH "${code_partition}" REQUIRED)
     dt_reg_size(code_partition_size PATH "${code_partition}" REQUIRED)
 
+    # Needed for the CONFIG_BUILD_OUTPUT_ADJUST_LMA calculation.
+    dt_partition_addr(code_partition_abs_addr PATH "${code_partition}" REQUIRED ABSOLUTE)
+    dt_chosen(sram_property PROPERTY "zephyr,sram")
+    dt_reg_addr(sram_addr PATH "${sram_property}" REQUIRED)
+
     set(preload_autoconf_h ${PRELOAD_BINARY_DIR}/zephyr/include/generated/zephyr/autoconf.h)
     set(preload_dotconfig  ${PRELOAD_BINARY_DIR}/zephyr/.config)
 
@@ -56,6 +61,10 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
         string(REGEX REPLACE "primary" "secondary" line ${line})
       endif()
 
+      if("${line}" MATCHES "^CONFIG_BUILD_OUTPUT_ADJUST_LMA=.*$")
+        string(REGEX REPLACE "CONFIG_BUILD_OUTPUT_ADJUST_LMA=(.*)" "CONFIG_BUILD_OUTPUT_ADJUST_LMA=\"${code_partition_abs_addr}-${sram_addr}\"" line ${line})
+      endif()
+
       list(APPEND dotconfig_variant_content "${line}\n")
     endforeach()
 
@@ -71,6 +80,10 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
 
       if("${line}" MATCHES "(--dependencies|-d).*\([0-9, ]+primary[0-9., ]+\)")
         string(REGEX REPLACE "primary" "secondary" line ${line})
+      endif()
+
+      if("${line}" MATCHES "^#define CONFIG_BUILD_OUTPUT_ADJUST_LMA .*$")
+        string(REGEX REPLACE "#define CONFIG_BUILD_OUTPUT_ADJUST_LMA (.*)" "#define CONFIG_BUILD_OUTPUT_ADJUST_LMA \"${code_partition_abs_addr}-${sram_addr}\"" line ${line})
       endif()
 
       list(APPEND autoconf_variant_content "${line}\n")
