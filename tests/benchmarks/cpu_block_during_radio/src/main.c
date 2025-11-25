@@ -18,6 +18,8 @@
 #define IBEACON_RSSI 0xc8
 #endif
 
+#include <zephyr/storage/flash_map.h>
+
 /*
  * Set iBeacon demo advertisement data. These values are for
  * demonstration only and must be changed for production environments!
@@ -177,6 +179,151 @@ static void busy_thread_entry(void *p1, void *p2, void *p3)
 	// }
 }
 
+
+/* Raw flash using flash area API */
+#define RAW_FLASH_PARTITION_ID DT_FIXED_PARTITION_ID(DT_NODELABEL(raw_flash_partition))
+
+static int write_flash_area(const uint8_t *data, size_t len)
+{
+	const struct flash_area *fa;
+	int err;
+
+	err = flash_area_open(RAW_FLASH_PARTITION_ID, &fa);
+	if (err) {
+		printk("Unable to open flash area: %d\n", err);
+		return err;
+	}
+
+	/* Optional: Erase before write if required by use-case
+	 * Here we assume user manages erasure as needed.
+	 */
+
+	err = flash_area_write(fa, 0, data, len);
+	if (err) {
+		printk("Failed to write flash area: %d\n", err);
+		flash_area_close(fa);
+		return err;
+	}
+
+	flash_area_close(fa);
+	return 0;
+}
+
+static int read_flash_area(uint8_t *data, size_t len)
+{
+	const struct flash_area *fa;
+	int err;
+
+	err = flash_area_open(RAW_FLASH_PARTITION_ID, &fa);
+	if (err) {
+		printk("Unable to open flash area: %d\n", err);
+		return err;
+	}
+
+	err = flash_area_read(fa, 0, data, len);
+	if (err) {
+		printk("Failed to read flash area: %d\n", err);
+		flash_area_close(fa);
+		return err;
+	}
+
+	flash_area_close(fa);
+	return 0;
+}
+
+static int erase_flash_area(int flash_area_id, size_t size)
+{
+	const struct flash_area *fa;
+	int err;
+
+	err = flash_area_open(flash_area_id, &fa);
+	if (err) {
+		printk("Unable to open flash area for erase: %d\n", err);
+		return err;
+	}
+
+	err = flash_area_erase(fa, 0, size);
+	if (err) {
+		printk("Failed to erase flash area: %d\n", err);
+		flash_area_close(fa);
+		return err;
+	}
+
+	flash_area_close(fa);
+	return 0;
+}
+
+
+#define FLASH_BUF_SIZE 10240
+
+static uint8_t flash_buf[FLASH_BUF_SIZE];
+static uint8_t verify_buf[FLASH_BUF_SIZE];
+
+static void fill_flash_buf(void)
+{
+	for (size_t i = 0; i < FLASH_BUF_SIZE; i++) {
+		flash_buf[i] = i;
+	}
+}
+
+static void busy_rram(void)
+{
+	printk("Erasing flash area\n");
+	erase_flash_area(RAW_FLASH_PARTITION_ID, FLASH_BUF_SIZE);
+
+	k_msleep(500);
+
+	printk("Writing flash area\n");
+	timestamp0_set(true);
+
+	write_flash_area(flash_buf, FLASH_BUF_SIZE);
+
+	timestamp0_set(false);
+	k_msleep(500);
+
+	memset(verify_buf, 0, FLASH_BUF_SIZE);
+	printk("Reading flash area\n");
+	read_flash_area(verify_buf, FLASH_BUF_SIZE);
+
+	printk("Verifying flash area\n");
+	if (memcmp(flash_buf, verify_buf, FLASH_BUF_SIZE)) {
+		printk("Flash area read not match\n");
+	} else {
+		printk("Flash area read match\n");
+	}
+}
+
+static void busy_rram_thread_entry(void *p1, void *p2, void *p3)
+{
+	printk("Busy RRAM thread started\n");
+
+	printk("Filling flash buffer\n");
+	fill_flash_buf();
+
+	while (1) {
+		printk("==> Busy RRAM work start\n");
+
+		busy_rram();
+
+		printk("<== Busy RRAM work end\n");
+
+		////////////////////////////////////////
+
+		printk("==> Sleeping\n");
+		timestamp1_set(true);
+
+		k_msleep(2000);
+		// k_yield();
+
+		timestamp1_set(false);
+		printk("<== Sleeping done\n");
+	}
+
+	// while (1) {
+	// 	k_msleep(1000);
+	// }
+}
+
 static k_tid_t busy_thread_id;
 static K_THREAD_STACK_DEFINE(busy_thread_stack, 1024);
 static struct k_thread busy_thread;
@@ -208,7 +355,8 @@ static void bt_ready(int err)
 	k_thread_create(&busy_thread,
 		busy_thread_stack,
 		1024,
-		busy_thread_entry,
+		// busy_thread_entry,
+		busy_rram_thread_entry,
 		NULL, NULL, NULL,
 		K_PRIO_PREEMPT(5), 0, K_NO_WAIT);
 }

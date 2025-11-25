@@ -5,6 +5,10 @@
  */
 
 / {
+	chosen {
+		zephyr,code-partition = &app_code_partition;
+	};
+
 	timestamps {
 		compatible = "gpio-leds";
 		timestamp0: timestamp_0 {
@@ -33,5 +37,31 @@
 		timestamp1 = &timestamp1;
 		timestamp2 = &timestamp2;
 		timestamp3 = &timestamp3;
+	};
+};
+
+&cpuapp_rram {
+	/delete-node/ partitions;
+
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		app_code_partition: partition@0 {
+			label = "code";
+			reg = <0x0 DT_SIZE_K(892)>;
+		};
+
+		raw_flash_partition: partition@df000 {
+			label = "raw_flash";
+			reg = <0xdf000 DT_SIZE_K(20)>;
+		};
+
+		raw_zms_partition: partition@e4000 {
+			label = "raw_zms";
+			reg = <0xe4000 DT_SIZE_K(20)>;
+		};
+
 	};
 };
