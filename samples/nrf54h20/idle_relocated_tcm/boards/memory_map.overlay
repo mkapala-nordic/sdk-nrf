@@ -6,12 +6,20 @@
 
 /{
 	soc{
-		cpurad_data_ram: sram@23020000 {
+		// cpurad_data_ram: sram@23020000 {
+		// 	compatible = "mmio-sram";
+		// 	reg = < 0x23020000 0x10000 >;
+		// 	#address-cells = < 0x1 >;
+		// 	#size-cells = < 0x1 >;
+		// 	ranges = < 0x0 0x23020000 0x10000 >;
+		// };
+
+		cpurad_loader_ram: sram@2f038000 {
 			compatible = "mmio-sram";
-			reg = < 0x23020000 0x10000 >;
+			reg = < 0x2f038000 0x1000 >;
 			#address-cells = < 0x1 >;
 			#size-cells = < 0x1 >;
-			ranges = < 0x0 0x23020000 0x10000 >;
+			ranges = < 0x0 0x2f038000 0x1000 >;
 		};
 	};
 };
