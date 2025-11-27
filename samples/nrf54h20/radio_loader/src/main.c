@@ -22,13 +22,16 @@
 #define LOADED_FW_RAM_ADDR				DT_REG_ADDR(LOADED_FW_RAM_NODE)
 #define LOADED_FW_RAM_SIZE				DT_REG_SIZE(LOADED_FW_RAM_NODE)
 
+#define TO_STRING2(x) #x
+#define TO_STRING(x) TO_STRING2(x)
+
 /* Verify devicetree configuration at build time */
 BUILD_ASSERT(DT_NODE_EXISTS(DT_CHOSEN(zephyr_loaded_fw_src)),
 	     "Missing chosen node: zephyr,loaded-fw-src");
 BUILD_ASSERT(DT_NODE_EXISTS(DT_CHOSEN(zephyr_loaded_fw_dst)),
 	     "Missing chosen node: zephyr,loaded-fw-dst");
 BUILD_ASSERT(LOADED_FW_NVM_SIZE <= LOADED_FW_RAM_SIZE,
-	     "Firmware size exceeds available TCM RAM");
+	     "Firmware size exceeds available TCM RAM: " TO_STRING(LOADED_FW_NVM_SIZE) " > " TO_STRING(LOADED_FW_RAM_SIZE));
 
 /**
  * @brief Copy firmware from MRAM to TCM and jump to it

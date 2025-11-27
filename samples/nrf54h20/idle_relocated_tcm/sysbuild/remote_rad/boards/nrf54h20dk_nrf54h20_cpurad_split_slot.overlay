@@ -14,11 +14,11 @@
 	};
 };
 
-// &cpurad_ram0 {
-// 	compatible = "mmio-sram";
-// 	/delete-property/ reg;
-// 	reg = < 0x23000000 0x20000 >;
-// 	ranges = < 0x0 0x23000000 0x20000 >;
-// };
+&cpurad_ram0 {
+	compatible = "mmio-sram";
+	/delete-property/ reg;
+	reg = < 0x23000000 (DT_SIZE_K(188)) >;
+	ranges = < 0x0 0x23000000 (DT_SIZE_K(188)) >;
+};
 
 secondary_app_partition: &cpurad_loaded_fw_slot1 {};

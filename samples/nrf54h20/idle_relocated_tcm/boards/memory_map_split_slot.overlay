@@ -55,7 +55,8 @@
 		 */
 		slot2_partition: cpurad_loaded_fw: partition@94000 {
 			label = "cpurad_loaded_fw";
-			reg = <0x94000 DT_SIZE_K(128)>;  /* 128 KB fixed */
+			// reg = <0x94000 (DT_SIZE_K(192) - 192)>;  /* 192 KB fixed - 192B for s2ram */
+			reg = <0x94000 (DT_SIZE_K(188))>;  /* 192 KB fixed - 192B for s2ram */
 		};
 
 		cpuppr_code_partition: partition@e4000 {
@@ -83,7 +84,8 @@
 		 */
 		slot3_partition: cpurad_loaded_fw_slot1: partition@154000 {
 			label = "cpurad_loaded_fw_slot1";
-			reg = <0x154000 DT_SIZE_K(128)>;  /* 128 KB fixed */
+			// reg = <0x154000 (DT_SIZE_K(192) - 192)>;  /* 192 KB fixed - 192B for s2ram */
+			reg = <0x154000 (DT_SIZE_K(188))>;  /* 192 KB fixed - 192B for s2ram */
 		};
 
 		storage_partition: partition@1a4000 {
