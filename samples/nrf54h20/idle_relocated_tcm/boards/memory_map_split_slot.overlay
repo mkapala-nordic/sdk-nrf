@@ -6,14 +6,6 @@
 
 /{
 	soc{
-		// cpurad_data_ram: sram@23020000 {
-		// 	compatible = "mmio-sram";
-		// 	reg = < 0x23020000 0x10000 >;
-		// 	#address-cells = < 0x1 >;
-		// 	#size-cells = < 0x1 >;
-		// 	ranges = < 0x0 0x23020000 0x10000 >;
-		// };
-
 		cpurad_loader_ram: sram@2f038000 {
 			compatible = "mmio-sram";
 			reg = < 0x2f038000 0x1000 >;
@@ -39,7 +31,7 @@
 		};
 
 		/* Image 0: Application Core (primary slot) - main app */
-		slot0_partition:cpuapp_slot0_partition: partition@40000 {
+		slot0_partition: cpuapp_slot0_partition: partition@40000 {
 			reg = <0x40000 DT_SIZE_K(326)>;
 		};
 
@@ -55,8 +47,7 @@
 		 */
 		slot2_partition: cpurad_loaded_fw: partition@94000 {
 			label = "cpurad_loaded_fw";
-			// reg = <0x94000 (DT_SIZE_K(192) - 192)>;  /* 192 KB fixed - 192B for s2ram */
-			reg = <0x94000 (DT_SIZE_K(188))>;  /* 192 KB fixed - 192B for s2ram */
+			reg = <0x94000 (DT_SIZE_K(192))>;  /* (at the end: 192KB for s2ram + 2KB trailer MCUboot) */
 		};
 
 		cpuppr_code_partition: partition@e4000 {
@@ -84,8 +75,7 @@
 		 */
 		slot3_partition: cpurad_loaded_fw_slot1: partition@154000 {
 			label = "cpurad_loaded_fw_slot1";
-			// reg = <0x154000 (DT_SIZE_K(192) - 192)>;  /* 192 KB fixed - 192B for s2ram */
-			reg = <0x154000 (DT_SIZE_K(188))>;  /* 192 KB fixed - 192B for s2ram */
+			reg = <0x154000 (DT_SIZE_K(192))>;  /* (at the end: 192KB for s2ram + 2KB trailer MCUboot) */
 		};
 
 		storage_partition: partition@1a4000 {

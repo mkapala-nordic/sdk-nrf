@@ -14,11 +14,24 @@
 	};
 };
 
+/* Relocate the pm_ramfunc to the end of the RAM block but before the MCUboot trailer. */
+/delete-node/ &pm_ramfunc;
+/ {
+	soc {
+		/* cache control functions - must be executed from RAM */
+		pm_ramfunc: cpurad_s2ram@2302df40 {
+			compatible = "zephyr,memory-region", "mmio-sram";
+			reg = <0x2302df40 192>;
+			zephyr,memory-region = "PMLocalRamfunc";
+		};
+	};
+};
+
 &cpurad_ram0 {
 	compatible = "mmio-sram";
 	/delete-property/ reg;
-	reg = < 0x23000000 (DT_SIZE_K(188)) >;
-	ranges = < 0x0 0x23000000 (DT_SIZE_K(188)) >;
+	reg = < 0x23000000 (DT_SIZE_K(192)) >;
+	ranges = < 0x0 0x23000000 (DT_SIZE_K(192)) >;
 };
 
 secondary_app_partition: &cpurad_loaded_fw_slot1 {};

@@ -17,8 +17,8 @@
 &cpurad_ram0 {
 	compatible = "mmio-sram";
 	/delete-property/ reg;
-	reg = < 0x23000000 (DT_SIZE_K(188)) >;
-	ranges = < 0x0 0x23000000 (DT_SIZE_K(188)) >;
+	reg = < 0x23000000 (DT_SIZE_K(192)) >;
+	ranges = < 0x0 0x23000000 (DT_SIZE_K(192)) >;
 };
 
 secondary_app_partition: &cpurad_loaded_fw_slot1 {};
