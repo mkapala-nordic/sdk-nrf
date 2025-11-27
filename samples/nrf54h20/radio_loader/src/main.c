@@ -47,7 +47,7 @@ static int load_and_jump_to_firmware(void)
 	memcpy((void *)LOADED_FW_RAM_ADDR, (void *)LOADED_FW_NVM_ADDR, LOADED_FW_NVM_SIZE);
 
 	/* Extract reset handler from ARM Cortex-M vector table (entry 1) */
-	uint32_t *vector_table = (uint32_t *)LOADED_FW_RAM_ADDR;
+	uint32_t *vector_table = (uint32_t *)(LOADED_FW_RAM_ADDR + CONFIG_ROM_START_OFFSET);
 	typedef void reset_handler_t(void);
 	reset_handler_t *reset_handler = (reset_handler_t *)(vector_table[1]);
 
