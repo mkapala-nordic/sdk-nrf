@@ -30,7 +30,7 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
     include(${ZEPHYR_NRF_MODULE_DIR}/cmake/sysbuild/bootloader_dts_utils.cmake)
 
     dt_chosen(code_partition PROPERTY "zephyr,code-partition")
-    dt_partition_addr(code_partition_offset PATH "${code_partition}" REQUIRED)
+    dt_partition_addr(code_partition_offset PATH "${code_partition}" REQUIRED) # ADD ABSOLUTE
     dt_reg_size(code_partition_size PATH "${code_partition}" REQUIRED)
 
     set(preload_autoconf_h ${PRELOAD_BINARY_DIR}/zephyr/include/generated/zephyr/autoconf.h)
