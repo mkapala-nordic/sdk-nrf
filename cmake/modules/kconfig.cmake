@@ -29,13 +29,14 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
   else()
     include(${ZEPHYR_NRF_MODULE_DIR}/cmake/sysbuild/bootloader_dts_utils.cmake)
 
-    dt_chosen(code_partition PROPERTY "fw-to-relocate")
-    if("${code_partition}" STREQUAL "")
-      dt_chosen(code_partition PROPERTY "zephyr,code-partition")
-    endif()
-
+    dt_chosen(code_partition PROPERTY "zephyr,code-partition")
     dt_partition_addr(code_partition_offset PATH "${code_partition}" REQUIRED)
     dt_reg_size(code_partition_size PATH "${code_partition}" REQUIRED)
+
+    # Needed for the CONFIG_BUILD_OUTPUT_ADJUST_LMA calculation.
+    dt_partition_addr(code_partition_abs_addr PATH "${code_partition}" REQUIRED ABSOLUTE)
+    dt_chosen(sram_property PROPERTY "zephyr,sram")
+    dt_reg_addr(sram_addr PATH "${sram_property}" REQUIRED)
 
     set(preload_autoconf_h ${PRELOAD_BINARY_DIR}/zephyr/include/generated/zephyr/autoconf.h)
     set(preload_dotconfig  ${PRELOAD_BINARY_DIR}/zephyr/.config)
@@ -48,24 +49,8 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
     # Additionally, convert primary slot dependencies to secondary slot dependencies.
     set(dotconfig_variant_content)
     foreach(line IN LISTS dotconfig_content)
-      dt_chosen(fw_to_relocate_property PROPERTY "fw-to-relocate")
       if("${line}" MATCHES "^CONFIG_FLASH_LOAD_OFFSET=.*$")
-        # Change the CONFIG_FLASH_LOAD_OFFSET value only if the fw_to_relocate_property is empty - meaning that the firmware is not being relocated.
-        if("${fw_to_relocate_property}" STREQUAL "")
-          string(REGEX REPLACE "CONFIG_FLASH_LOAD_OFFSET=(.*)" "CONFIG_FLASH_LOAD_OFFSET=${code_partition_offset}" line ${line})
-        endif()
-      endif()
-
-      # Change the CONFIG_BUILD_OUTPUT_ADJUST_LMA value only if the fw_to_relocate_property is not empty - meaning that the firmware is being relocated.
-      if(NOT "${fw_to_relocate_property}" STREQUAL "")
-        if("${line}" MATCHES "^CONFIG_BUILD_OUTPUT_ADJUST_LMA=.*$")
-
-          dt_partition_addr(fw_to_relocate_offset ABSOLUTE PATH "${fw_to_relocate_property}" REQUIRED)
-          dt_chosen(tcm_code_property PROPERTY "zephyr,code-partition")
-          dt_reg_addr(tcm_code_addr PATH "${tcm_code_property}" REQUIRED)
-
-          string(REGEX REPLACE "CONFIG_BUILD_OUTPUT_ADJUST_LMA=(.*)" "CONFIG_BUILD_OUTPUT_ADJUST_LMA=${flash_base_addr}+${fw_to_relocate_offset}-${tcm_code_addr}" line ${line})
-        endif()
+        string(REGEX REPLACE "CONFIG_FLASH_LOAD_OFFSET=(.*)" "CONFIG_FLASH_LOAD_OFFSET=${code_partition_offset}" line ${line})
       endif()
 
       if("${line}" MATCHES "^CONFIG_FLASH_LOAD_SIZE=.*$")
@@ -76,16 +61,17 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
         string(REGEX REPLACE "primary" "secondary" line ${line})
       endif()
 
+      if("${line}" MATCHES "^CONFIG_BUILD_OUTPUT_ADJUST_LMA=.*$")
+        string(REGEX REPLACE "CONFIG_BUILD_OUTPUT_ADJUST_LMA=(.*)" "CONFIG_BUILD_OUTPUT_ADJUST_LMA=\"${code_partition_abs_addr}-${sram_addr}\"" line ${line})
+      endif()
+
       list(APPEND dotconfig_variant_content "${line}\n")
     endforeach()
 
     set(autoconf_variant_content)
     foreach(line IN LISTS autoconf_content)
       if("${line}" MATCHES "^#define CONFIG_FLASH_LOAD_OFFSET .*$")
-        # Change the CONFIG_FLASH_LOAD_OFFSET value only if the fw_to_relocate_property is empty - meaning that the firmware is not being relocated.
-        if("${fw_to_relocate_property}" STREQUAL "")
-          string(REGEX REPLACE "#define CONFIG_FLASH_LOAD_OFFSET (.*)" "#define CONFIG_FLASH_LOAD_OFFSET ${code_partition_offset}" line ${line})
-        endif()
+        string(REGEX REPLACE "#define CONFIG_FLASH_LOAD_OFFSET (.*)" "#define CONFIG_FLASH_LOAD_OFFSET ${code_partition_offset}" line ${line})
       endif()
 
       if("${line}" MATCHES "^#define CONFIG_FLASH_LOAD_SIZE .*$")
@@ -94,6 +80,10 @@ if(CONFIG_NCS_IS_VARIANT_IMAGE)
 
       if("${line}" MATCHES "(--dependencies|-d).*\([0-9, ]+primary[0-9., ]+\)")
         string(REGEX REPLACE "primary" "secondary" line ${line})
+      endif()
+
+      if("${line}" MATCHES "^#define CONFIG_BUILD_OUTPUT_ADJUST_LMA .*$")
+        string(REGEX REPLACE "#define CONFIG_BUILD_OUTPUT_ADJUST_LMA (.*)" "#define CONFIG_BUILD_OUTPUT_ADJUST_LMA \"${code_partition_abs_addr}-${sram_addr}\"" line ${line})
       endif()
 
       list(APPEND autoconf_variant_content "${line}\n")
