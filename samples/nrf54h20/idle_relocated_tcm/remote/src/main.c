@@ -9,6 +9,9 @@
 
 LOG_MODULE_REGISTER(idle);
 
+#define CODE_PARTITION_NODE		DT_CHOSEN(zephyr_code_partition)
+#define CODE_PARTITION_START_ADDR	DT_FIXED_PARTITION_ADDR(CODE_PARTITION_NODE)
+
 int main(void)
 {
 	unsigned int cnt = 0;
@@ -16,6 +19,8 @@ int main(void)
 
 	__asm__ volatile("adr %0, ." : "=r"(pc));
 	LOG_INF("Multicore idle test on %s", CONFIG_BOARD_TARGET);
+	LOG_INF("Original code partition start address: 0x%lx\n",
+		(unsigned long)CODE_PARTITION_START_ADDR);
 	LOG_INF("Current PC (program counter) address: 0x%lx\n", (unsigned long)pc);
 
 	/* using __TIME__ ensure that a new binary will be built on every
