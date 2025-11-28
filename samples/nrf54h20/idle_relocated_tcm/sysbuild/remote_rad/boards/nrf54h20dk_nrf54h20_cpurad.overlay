@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include "../../../boards/memory_map.overlay"
+#include "../../../boards/memory_map.dtsi"
 
 /{
 	chosen {
