@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
- #include "../../../boards/memory_map_split_slot.dtsi"
- #include "../../../boards/memory_map_ram_cpurad.dtsi"
- #include "../../../boards/memory_map_ram_pm_cpurad.dtsi"
+#include "../boards/memory_map_split_slot.dtsi"
+#include "../boards/memory_map_ram_cpurad.dtsi"
+#include "../boards/memory_map_ram_pm_cpurad.dtsi"
 
 /{
 	chosen {

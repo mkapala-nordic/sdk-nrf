@@ -49,7 +49,7 @@
 		/* Image 1, slot 0 (primary slot) - radio core application code
 		 * relocated from MRAM to TCM for cpurad core.
 		 */
-		slot2_partition: cpurad_loaded_fw: partition@96000 {
+		slot2_partition: cpurad_slot2_partition: cpurad_loaded_fw: partition@96000 {
 			label = "cpurad_loaded_fw";
 			reg = <0x96000 (DT_SIZE_K(192))>;
 			/* size: application + 192B for s2ram + 2KB trailer MCUboot */
@@ -81,7 +81,7 @@
 		/* Image 1, slot 1 (secondary slot) - radio core application code
 		 * relocated from MRAM to TCM for cpurad core.
 		 */
-		slot3_partition: cpurad_loaded_fw_slot1: partition@156000 {
+		slot3_partition: cpurad_slot3_partition: cpurad_loaded_fw_slot1: partition@156000 {
 			label = "cpurad_loaded_fw_slot1";
 			reg = <0x156000 (DT_SIZE_K(192))>;
 			/* size: application + 192B for s2ram + 2KB trailer MCUboot */

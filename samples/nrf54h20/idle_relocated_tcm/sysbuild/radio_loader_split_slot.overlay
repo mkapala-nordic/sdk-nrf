@@ -4,15 +4,13 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include "../../../boards/memory_map_split_slot.dtsi"
-#include "../../../boards/memory_map_ram_cpurad.dtsi"
+#include "../boards/memory_map_split_slot.dtsi"
+#include "../boards/memory_map_ram_cpurad.dtsi"
 
 /{
 	chosen {
 		zephyr,code-partition = &cpurad_loader_partition;
 		zephyr,sram = &cpurad_loader_ram;
-		zephyr,loaded-fw-src = &cpurad_loaded_fw;
-		zephyr,loaded-fw-dst = &cpurad_ram0;
 	};
 };
 

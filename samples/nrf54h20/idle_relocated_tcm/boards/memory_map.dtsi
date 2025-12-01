@@ -49,7 +49,7 @@
 		};
 
 		/* Radio core application code relocated from MRAM to TCM for cpurad core. */
-		cpurad_loaded_fw: partition@94000 {
+		cpurad_slot2_partition: cpurad_loaded_fw: partition@94000 {
 			label = "cpurad_loaded_fw";
 			reg = <0x94000 DT_SIZE_K(192)>;
 		};
@@ -78,13 +78,13 @@
 		};
 
 		/* Radio core firmware loader code for cpurad core. */
-		cpurad_loader_partition_slot1: cpurad_slot1_partition: partition@152000 {
+		cpurad_slot1_partition: cpurad_loader_partition_slot1: partition@152000 {
 			label = "cpurad_loader_partition_slot1";
 			reg = <0x152000 DT_SIZE_K(8)>;  /* 8 KB allocated (~4 KB actual) */
 		};
 
 		/* Radio core application code relocated from MRAM to TCM for cpurad core. */
-		cpurad_loaded_fw_slot1: partition@154000 {
+		cpurad_slot3_partition: cpurad_loaded_fw_slot1: partition@154000 {
 			label = "cpurad_loaded_fw_slot1";
 			reg = <0x154000 DT_SIZE_K(192)>;
 		};
