@@ -132,6 +132,39 @@ int dult_user_register(const struct dult_user *user);
  */
 int dult_battery_level_set(const struct dult_user *user, uint8_t percentage_level);
 
+/** DULT Bluetooth advertising data. */
+struct dult_bt_adv_data {
+	/** Network-specific proprietary data buffer. */
+	uint8_t *propertiary_buf;
+
+	/** Length of the network-specific proprietary data buffer. */
+	size_t len;
+};
+
+/** @brief Get the size of the DULT Bluetooth advertising data.
+ *
+ *  @param[in] adv_data Pointer to the DULT Bluetooth advertising data.
+ *
+ *  @return Size of the DULT Bluetooth advertising data, or @c SIZE_MAX if proprietary
+ *	    data length exceeds the maximum allowed by the DULT specification.
+ */
+size_t dult_bt_adv_data_size(const struct dult_bt_adv_data *adv_data);
+
+/** @brief Fill the proprietary data buffer with the DULT Bluetooth advertising data.
+ *
+ *  Data is filled for the currently registered DULT user.
+ *
+ *  @param[out] bt_adv_data Pointer to the Bluetooth advertising data structure.
+ *  @param[out] buf Pointer to the buffer used to store the DULT Bluetooth advertising data.
+ *  @param[in] buf_size Size of the buffer used to store the DULT Bluetooth advertising data.
+ *  @param[in] user Pointer to the DULT user structure.
+ *  @param[in] adv_data Pointer to the DULT Bluetooth advertising data.
+ *
+ *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
+ */
+int dult_bt_adv_data_fill(struct bt_data *bt_adv_data, uint8_t *buf, size_t buf_size,
+			  const struct dult_user *user, const struct dult_bt_adv_data *adv_data);
+
 /** DULT identifier read state callback. */
 struct dult_id_read_state_cb {
 	/** @brief Get identifier payload.

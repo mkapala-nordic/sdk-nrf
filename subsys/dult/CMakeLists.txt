@@ -9,6 +9,7 @@ zephyr_library_named(dult)
 zephyr_library_include_directories(include)
 
 zephyr_library_sources_ifdef(CONFIG_DULT_BATTERY battery.c)
+zephyr_library_sources_ifdef(CONFIG_DULT_BT_ADV bt/adv.c)
 zephyr_library_sources_ifdef(CONFIG_DULT_BT_ANOS bt/anos.c)
 zephyr_library_sources_ifdef(CONFIG_DULT_ID id.c)
 zephyr_library_sources_ifdef(CONFIG_DULT_MOTION_DETECTOR motion_detector.c)

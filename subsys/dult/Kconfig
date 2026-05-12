@@ -80,6 +80,16 @@ endchoice
 
 endif # DULT_BATTERY
 
+config DULT_BT_ADV
+	bool
+	default y
+	help
+	  Add DULT Bluetooth advertising source file.
+
+if DULT_BT_ADV
+
+endif # DULT_BT_ADV
+
 config DULT_BT_ANOS
 	bool
 	default y
