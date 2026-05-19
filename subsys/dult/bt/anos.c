@@ -12,6 +12,7 @@
 #include <zephyr/bluetooth/gatt.h>
 
 #include <dult/dult.h>
+#include <dult/bt.h>
 #include "dult_battery.h"
 #include "dult_bt_anos.h"
 #include "dult_user.h"
@@ -95,6 +96,7 @@ static const struct bt_gatt_attr *anos_chrc_indicate_attr;
 static enum anos_sound_state anos_sound_state;
 static struct bt_conn *sound_conn;
 static const struct dult_bt_anos_sound_cb *anos_sound_cb;
+static const struct dult_anos_cb *anos_cb;
 
 static bool is_mtu_sufficient(struct bt_conn *conn, uint16_t data_len)
 {
@@ -528,6 +530,18 @@ static ssize_t write_accessory_non_owner_err_handle(struct bt_conn *conn,
 	return res;
 }
 
+static enum dult_anos_groups opcode_group(uint16_t opcode)
+{
+	switch (opcode) {
+	case ANOS_CHRC_NON_OWNER_CONTROL_WRITE_OPCODE_SOUND_START:
+	case ANOS_CHRC_NON_OWNER_CONTROL_WRITE_OPCODE_SOUND_STOP:
+	case ANOS_CHRC_NON_OWNER_CONTROL_WRITE_OPCODE_GET_ID:
+		return DULT_ANOS_GROUP_NON_OWNER_CONTROL;
+	default:
+		return DULT_ANOS_GROUP_ACCESSORY_INFO;
+	}
+}
+
 static ssize_t write_accessory_non_owner(struct bt_conn *conn,
 					 const struct bt_gatt_attr *attr,
 					 const void *buf,
@@ -574,7 +588,7 @@ static ssize_t write_accessory_non_owner(struct bt_conn *conn,
 	LOG_DBG("Received following opcode: %#05X (Accessory non-owner write)", opcode_write);
 
 	mode = dult_near_owner_state_get();
-	if (mode != DULT_NEAR_OWNER_STATE_MODE_SEPARATED) {
+	if (!anos_cb && mode != DULT_NEAR_OWNER_STATE_MODE_SEPARATED) {
 		LOG_WRN("Invalid near-owner state mode: mode=%d (Accessory non-owner write)", mode);
 		err = command_response_send(conn, attr, opcode_write,
 					    ANOS_CHRC_CMD_RESPONSE_STATUS_INVALID_COMMAND);
@@ -583,6 +597,28 @@ static ssize_t write_accessory_non_owner(struct bt_conn *conn,
 		}
 		write_accessory_non_owner_exit_log(res, conn);
 		return res;
+	}
+
+	if (anos_cb) {
+		enum dult_anos_groups group = opcode_group(opcode_write);
+		enum dult_anos_access_result result = anos_cb->verify_access(conn, group);
+
+		LOG_DBG("ANOS access check: opcode=%#05X group=%d result=%d",
+			opcode_write, group, result);
+
+		if (result != DULT_ANOS_ACCESS_GRANTED) {
+			enum anos_chrc_cmd_response_status status =
+				(result == DULT_ANOS_ACCESS_DENIED_INVALID_STATE) ?
+				ANOS_CHRC_CMD_RESPONSE_STATUS_INVALID_STATE :
+				ANOS_CHRC_CMD_RESPONSE_STATUS_INVALID_COMMAND;
+
+			err = command_response_send(conn, attr, opcode_write, status);
+			if (err) {
+				res = write_accessory_non_owner_err_to_att_err_map(err);
+			}
+			write_accessory_non_owner_exit_log(res, conn);
+			return res;
+		}
 	}
 
 	switch (opcode_write) {
@@ -778,6 +814,18 @@ void dult_bt_anos_sound_cb_register(const struct dult_bt_anos_sound_cb *cb)
 		 "DULT ANOS: input callback structure with invalid parameters");
 
 	anos_sound_cb = cb;
+}
+
+int dult_anos_cb_register(const struct dult_anos_cb *cb)
+{
+	__ASSERT(!anos_cb,
+		 "DULT ANOS: callback already registered");
+	__ASSERT(cb && cb->verify_access,
+		 "DULT ANOS: input callback structure with invalid parameters");
+
+	anos_cb = cb;
+
+	return 0;
 }
 
 int dult_bt_anos_enable(void)

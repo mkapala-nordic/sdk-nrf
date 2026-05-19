@@ -119,6 +119,47 @@ struct dult_bt_adv_data {
 int dult_bt_adv_data_fill(const struct dult_user *user, struct bt_data *bt_adv_data,
 			  uint8_t *buf, size_t buf_size, const struct dult_bt_adv_data *adv_data);
 
+/** DULT Accessory Non-Owner Service (ANOS) opcode groups. */
+enum dult_anos_groups {
+	DULT_ANOS_GROUP_ACCESSORY_INFO,
+	DULT_ANOS_GROUP_NON_OWNER_CONTROL,
+};
+
+/** Result of an ANOS opcode access check. */
+enum dult_anos_access_result {
+	/** Access is granted; dispatch the opcode normally. */
+	DULT_ANOS_ACCESS_GRANTED,
+
+	/** Access denied; reply with Invalid_state. */
+	DULT_ANOS_ACCESS_DENIED_INVALID_STATE,
+
+	/** Access denied; reply with Invalid_command. */
+	DULT_ANOS_ACCESS_DENIED_INVALID_COMMAND,
+};
+
+/** DULT Accessory Non-Owner Service (ANOS) callback structure. */
+struct dult_anos_cb {
+	/** @brief Verify access to an ANOS opcode.
+	 *
+	 *  This callback is called to verify access to an ANOS opcode.
+	 *
+	 *  @param[in] conn Pointer to the Bluetooth connection.
+	 *  @param[in] group ANOS opcode group.
+	 *
+	 *  @return Result of the access check.
+	 */
+	enum dult_anos_access_result (*verify_access)(struct bt_conn *conn,
+						      enum dult_anos_groups group);
+};
+
+/** @brief Register DULT Accessory Non-Owner Service (ANOS) callback structure.
+ *
+ *  @param cb ANOS callback structure.
+ *
+ *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
+ */
+int dult_anos_cb_register(const struct dult_anos_cb *cb);
+
 #ifdef __cplusplus
 }
 #endif
