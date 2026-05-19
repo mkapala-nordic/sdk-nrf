@@ -163,6 +163,74 @@ struct dult_bt_adv_data {
 int dult_bt_adv_data_fill(const struct dult_user *user, struct bt_data *bt_adv_data,
 			  uint8_t *buf, size_t buf_size, const struct dult_bt_adv_data *adv_data);
 
+/** DULT Accessory Non-Owner Service (ANOS) opcode groups. */
+enum dult_bt_anos_opcode_group {
+	/** Accessory information opcode group. */
+	DULT_BT_ANOS_OPCODE_GROUP_ACCESSORY_INFO,
+
+	/** Non-owner control opcode group. */
+	DULT_BT_ANOS_OPCODE_GROUP_NON_OWNER_CONTROL,
+};
+
+/** Result of an ANOS opcode access check. */
+enum dult_bt_anos_access_result {
+	/** Access is granted; dispatch the opcode normally. */
+	DULT_BT_ANOS_ACCESS_RESULT_GRANTED,
+
+	/** Access denied; reply with Invalid_state. */
+	DULT_BT_ANOS_ACCESS_RESULT_DENIED_INVALID_STATE,
+
+	/** Access denied; reply with Invalid_command. */
+	DULT_BT_ANOS_ACCESS_RESULT_DENIED_INVALID_COMMAND,
+};
+
+/** DULT Accessory Non-Owner Service (ANOS) callback structure. */
+struct dult_bt_anos_cb {
+	/** @brief Verify access to an ANOS opcode group.
+	 *
+	 *  Registering this callback (via @ref dult_bt_anos_cb_register) is
+	 *  OPTIONAL. When no callback is registered, the DULT module applies
+	 *  its built-in access gate: all ANOS opcodes are rejected with the
+	 *  Invalid_command status unless the accessory is in the
+	 *  @ref DULT_NEAR_OWNER_STATE_MODE_SEPARATED state, matching the
+	 *  behavior mandated by the DULT specification.
+	 *
+	 *  Registering this callback overrides the built-in gate: the callback
+	 *  becomes the sole authority on access for every ANOS opcode write,
+	 *  regardless of the near-owner state. The DULT specification mandates
+	 *  that the Accessory Information opcodes
+	 *  (@ref DULT_BT_ANOS_OPCODE_GROUP_ACCESSORY_INFO) and the Non-owner
+	 *  Control opcodes (@ref DULT_BT_ANOS_OPCODE_GROUP_NON_OWNER_CONTROL)
+	 *  are only available while the accessory is in the
+	 *  @ref DULT_NEAR_OWNER_STATE_MODE_SEPARATED state and that the
+	 *  accessory must reply with the Invalid_command status in every other
+	 *  state. Returning @ref DULT_BT_ANOS_ACCESS_RESULT_GRANTED outside the
+	 *  separated state is a deviation from the DULT specification; the
+	 *  integrator is responsible for ensuring that the policy implemented
+	 *  in this callback is consistent with the requirements of the network
+	 *  specification being implemented on top of DULT.
+	 *
+	 *  @param[in] conn  Pointer to the Bluetooth connection.
+	 *  @param[in] group ANOS opcode group.
+	 *
+	 *  @return Result of the access verification operation.
+	 */
+	enum dult_bt_anos_access_result (*access_verify)(struct bt_conn *conn,
+							 enum dult_bt_anos_opcode_group group);
+};
+
+/** @brief Register DULT Bluetooth ANOS callback structure.
+ *
+ *  This function must be called after registering the DULT user with @ref dult_user_register
+ *  and before enabling DULT with @ref dult_enable function.
+ *
+ *  @param user	User structure used to authenticate the user.
+ *  @param cb	DULT Bluetooth ANOS callback structure.
+ *
+ *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
+ */
+int dult_bt_anos_cb_register(const struct dult_user *user, const struct dult_bt_anos_cb *cb);
+
 #ifdef __cplusplus
 }
 #endif
