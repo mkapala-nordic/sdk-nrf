@@ -354,6 +354,40 @@ struct dult_motion_detector_cb {
 int dult_motion_detector_cb_register(const struct dult_user *user,
 				     const struct dult_motion_detector_cb *cb);
 
+/** Separated UT timing parameters for the motion detector test mode.
+ *  All time values are in minutes.
+ *  Only available when @kconfig{CONFIG_DULT_MOTION_DETECTOR_TEST_MODE} is enabled.
+ */
+struct dult_test_mode_separated_ut_period {
+	/** Backoff period in minutes. */
+	uint32_t backoff;
+
+	/** Minimum time in separated state before enabling the motion detector, in minutes. */
+	uint32_t timeout_min;
+
+	/** Maximum time in separated state before enabling the motion detector, in minutes.
+	 *  Must be greater than or equal to @ref timeout_min.
+	 */
+	uint32_t timeout_max;
+};
+
+/** @brief Override the DULT motion detector separated UT timing parameters.
+ *
+ *  Replaces the compile-time Kconfig defaults with the supplied runtime values.
+ *  The new values take effect on the next timer arm; any already-running timer
+ *  is not restarted.
+ *
+ *  This API can only be used when the @kconfig{CONFIG_DULT_MOTION_DETECTOR_TEST_MODE}
+ *  Kconfig option is enabled.
+ *
+ *  @param data New timing parameters. @ref dult_test_mode_separated_ut_period.timeout_max
+ *              must be greater than or equal to
+ *              @ref dult_test_mode_separated_ut_period.timeout_min.
+ *
+ *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
+ */
+int dult_test_mode_separated_ut_period_set(struct dult_test_mode_separated_ut_period data);
+
 /** Modes of the DULT near-owner state. */
 enum dult_near_owner_state_mode {
 	/** Separated mode of the near-owner state. */

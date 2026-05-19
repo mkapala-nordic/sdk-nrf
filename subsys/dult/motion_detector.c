@@ -41,6 +41,42 @@ LOG_MODULE_REGISTER(dult_motion_detector, CONFIG_DULT_LOG_LEVEL);
 
 BUILD_ASSERT(SEPARATED_UT_TIMEOUT_PERIOD_DIFF >= 0);
 
+#if CONFIG_DULT_MOTION_DETECTOR_TEST_MODE
+static uint32_t ut_backoff_period_min =
+	CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_BACKOFF_PERIOD;
+static uint32_t ut_timeout_period_min =
+	CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN;
+static uint32_t ut_timeout_period_max =
+	CONFIG_DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX;
+#endif /* CONFIG_DULT_MOTION_DETECTOR_TEST_MODE */
+
+static k_timeout_t backoff_period_get(void)
+{
+#if CONFIG_DULT_MOTION_DETECTOR_TEST_MODE
+	return K_MINUTES(ut_backoff_period_min);
+#else
+	return SEPARATED_UT_BACKOFF_PERIOD;
+#endif
+}
+
+static uint32_t timeout_period_min_get(void)
+{
+#if CONFIG_DULT_MOTION_DETECTOR_TEST_MODE
+	return ut_timeout_period_min;
+#else
+	return SEPARATED_UT_TIMEOUT_PERIOD_MIN;
+#endif
+}
+
+static uint32_t timeout_period_max_get(void)
+{
+#if CONFIG_DULT_MOTION_DETECTOR_TEST_MODE
+	return ut_timeout_period_max;
+#else
+	return SEPARATED_UT_TIMEOUT_PERIOD_MAX;
+#endif
+}
+
 static bool is_enabled;
 static const struct dult_motion_detector_cb *motion_detector_cb;
 static const struct dult_motion_detector_sound_cb *sound_cb;
@@ -111,7 +147,7 @@ static void backoff_setup(void)
 
 	state_reset();
 	__ASSERT_NO_MSG(!k_work_delayable_is_pending(&motion_enable_work));
-	ret = k_work_schedule(&motion_enable_work, SEPARATED_UT_BACKOFF_PERIOD);
+	ret = k_work_schedule(&motion_enable_work, backoff_period_get());
 	__ASSERT_NO_MSG(ret == 1);
 }
 
@@ -206,15 +242,23 @@ static void separated_mode_transition_handle(void)
 			     sizeof(separated_ut_timeout_period_seed));
 	}
 
+	uint32_t timeout_min = timeout_period_min_get();
+	uint32_t timeout_max = timeout_period_max_get();
+	uint32_t timeout_diff = timeout_max - timeout_min;
+
+#if !CONFIG_DULT_MOTION_DETECTOR_TEST_MODE
 	BUILD_ASSERT(SEPARATED_UT_TIMEOUT_PERIOD_DIFF < UINT16_MAX);
+#else
+	__ASSERT_NO_MSG(timeout_diff < UINT16_MAX);
+#endif
 
 	/* Convert the random part range from <0; UINT16_MAX> to
-	 * <SEPARATED_UT_TIMEOUT_PERIOD_MIN; SEPARATED_UT_TIMEOUT_PERIOD_MAX>
+	 * <timeout_min; timeout_max>
 	 */
-	separated_ut_timeout_period = SEPARATED_UT_TIMEOUT_PERIOD_DIFF;
+	separated_ut_timeout_period = timeout_diff;
 	separated_ut_timeout_period *= separated_ut_timeout_period_seed;
 	separated_ut_timeout_period /= UINT16_MAX;
-	separated_ut_timeout_period += SEPARATED_UT_TIMEOUT_PERIOD_MIN;
+	separated_ut_timeout_period += timeout_min;
 
 	LOG_DBG("Starting the work for enabling the motion detector. "
 		"Randomized timeout set to: %" PRIu32 " minutes", separated_ut_timeout_period);
@@ -378,3 +422,24 @@ int dult_motion_detector_reset(void)
 
 	return 0;
 }
+
+#if CONFIG_DULT_MOTION_DETECTOR_TEST_MODE
+int dult_test_mode_separated_ut_period_set(struct dult_test_mode_separated_ut_period data)
+{
+	if (data.timeout_max < data.timeout_min) {
+		LOG_ERR("DULT Motion Detector test mode: "
+			"timeout_max (%" PRIu32 ") must be >= timeout_min (%" PRIu32 ")",
+			data.timeout_max, data.timeout_min);
+		return -EINVAL;
+	}
+
+	ut_backoff_period_min = data.backoff;
+	ut_timeout_period_min = data.timeout_min;
+	ut_timeout_period_max = data.timeout_max;
+
+	LOG_DBG("DULT Motion Detector test mode: backoff=%" PRIu32 " min, timeout=[%" PRIu32 ", %" PRIu32 "] min",
+		data.backoff, data.timeout_min, data.timeout_max);
+
+	return 0;
+}
+#endif /* CONFIG_DULT_MOTION_DETECTOR_TEST_MODE */

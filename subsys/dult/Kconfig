@@ -170,6 +170,12 @@ config DULT_MOTION_DETECTOR_TEST_MODE
 	  for testing purposes. Those values are defined in the DULT specification and should
 	  not be changed in the production code.
 
+config DULT_MOTION_DETECTOR_TEST_MODE_USE_DEFAULT
+	bool "Use default motion detector test mode parameters"
+	depends on DULT_MOTION_DETECTOR_TEST_MODE
+	help
+	  Use the default motion detector test mode parameters.
+
 config DULT_MOTION_DETECTOR_SEPARATED_UT_SAMPLING_RATE1
 	int
 	default 10000
@@ -185,17 +191,17 @@ config DULT_MOTION_DETECTOR_SEPARATED_UT_SAMPLING_RATE2
 
 config DULT_MOTION_DETECTOR_SEPARATED_UT_BACKOFF_PERIOD
 	int "Period in minutes to disable motion detector if accessory is in separated state" if DULT_MOTION_DETECTOR_TEST_MODE
-	default 2 if DULT_MOTION_DETECTOR_TEST_MODE
+	default 2 if DULT_MOTION_DETECTOR_TEST_MODE_USE_DEFAULT
 	default 360
 
 config DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN
 	int "Minimum time span in minutes in separated state before enabling motion detector" if DULT_MOTION_DETECTOR_TEST_MODE
-	default 3 if DULT_MOTION_DETECTOR_TEST_MODE
+	default 3 if DULT_MOTION_DETECTOR_TEST_MODE_USE_DEFAULT
 	default 480
 
 config DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MAX
 	int "Maximum time span in minutes in separated state before enabling motion detector" if DULT_MOTION_DETECTOR_TEST_MODE
-	default DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN if DULT_MOTION_DETECTOR_TEST_MODE
+	default DULT_MOTION_DETECTOR_SEPARATED_UT_TIMEOUT_PERIOD_MIN if DULT_MOTION_DETECTOR_TEST_MODE_USE_DEFAULT
 	default 1440
 
 config DULT_MOTION_DETECTOR_SEPARATED_UT_ACTIVE_POLL_DURATION
