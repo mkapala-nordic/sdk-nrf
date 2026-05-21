@@ -13,6 +13,19 @@ menuconfig DULT
 
 if DULT
 
+config DULT_USER_MAX
+	int "Maximum number of DULT users registered concurrently"
+	range 1 4
+	default 1
+	help
+	  Maximum number of DULT users that can be registered concurrently with
+	  @ref dult_user_register. Set to 1 (default) to retain the single-user
+	  behavior. Increase to allow multiple location tracking networks
+	  to share the DULT module at the same time. When
+	  more than one user is registered, every user must implement the
+	  @ref dult_anos_cb.owns_connection callback so that the ANOS GATT layer can
+	  route each incoming connection to the correct user.
+
 config DULT_BATTERY
 	bool "DULT battery information"
 	help

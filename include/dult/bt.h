@@ -150,15 +150,39 @@ struct dult_anos_cb {
 	 */
 	enum dult_anos_access_result (*verify_access)(struct bt_conn *conn,
 						      enum dult_anos_groups group);
+
+	/** @brief Check whether this DULT user owns the given Bluetooth connection.
+	 *
+	 *  Called by the ANOS GATT layer to resolve which registered DULT user should answer
+	 *  a non-owner read/write on the supplied @p conn. Typical implementations compare
+	 *  the connection's local Bluetooth identity (see @ref bt_conn_get_info) against the
+	 *  identity used by the network's advertising set. Only the user whose callback
+	 *  returns @c true on a given @p conn is considered for that operation.
+	 *
+	 *  When @kconfig{CONFIG_DULT_USER_MAX} equals 1 (single-user build), this callback is
+	 *  optional. If it is @c NULL or no registered user claims the connection, the lone
+	 *  registered user is used as a fallback. With more than one user registered, every
+	 *  user must implement this callback so the routing decision is unambiguous.
+	 *
+	 *  @param[in] conn Pointer to the Bluetooth connection.
+	 *
+	 *  @return @c true if this user owns the connection, @c false otherwise.
+	 */
+	bool (*owns_connection)(struct bt_conn *conn);
 };
 
 /** @brief Register DULT Accessory Non-Owner Service (ANOS) callback structure.
  *
- *  @param cb ANOS callback structure.
+ *  Each registered DULT user installs its own ANOS callback structure. The callback is
+ *  consulted by the ANOS GATT layer on every non-owner write to route the request to the
+ *  user that owns the originating connection and to apply that user's access policy.
+ *
+ *  @param user User structure used to authenticate the user.
+ *  @param cb   ANOS callback structure.
  *
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */
-int dult_anos_cb_register(const struct dult_anos_cb *cb);
+int dult_anos_cb_register(const struct dult_user *user, const struct dult_anos_cb *cb);
 
 #ifdef __cplusplus
 }

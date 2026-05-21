@@ -20,17 +20,23 @@
 extern "C" {
 #endif
 
-/** @brief Enable DULT sound.
- *
- *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
- */
-int dult_sound_enable(void);
+#include <dult/dult.h>
 
-/** @brief Reset DULT sound.
+/** @brief Enable DULT sound for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
  *
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */
-int dult_sound_reset(void);
+int dult_sound_enable(const struct dult_user *user);
+
+/** @brief Reset DULT sound for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
+ *
+ *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
+ */
+int dult_sound_reset(const struct dult_user *user);
 
 #ifdef __cplusplus
 }

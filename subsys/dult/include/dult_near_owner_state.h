@@ -22,21 +22,27 @@
 extern "C" {
 #endif
 
-/** @brief Get current DULT near owner state.
+/** @brief Get the current DULT near owner state for the supplied user.
  *
- *  @return Current DULT near owner state
+ *  @param user User structure used to authenticate the user.
+ *
+ *  @return Current DULT near owner state of @p user. Returns
+ *          @ref DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER for an unknown user.
  */
-enum dult_near_owner_state_mode dult_near_owner_state_get(void);
+enum dult_near_owner_state_mode dult_near_owner_state_get(const struct dult_user *user);
 
 /** @brief DULT near owner state callback structure. */
 struct dult_near_owner_state_cb {
 	/** @brief DULT near owner state changed.
 	 *
-	 *  This callback is called to notify that the near owner state has been changed.
+	 *  This callback is called to notify that the near owner state has been changed
+	 *  for a specific DULT user.
 	 *
+	 *  @param user User whose near owner state changed.
 	 *  @param mode Mode of the current DULT near owner state.
 	 */
-	void (*state_changed)(enum dult_near_owner_state_mode mode);
+	void (*state_changed)(const struct dult_user *user,
+			      enum dult_near_owner_state_mode mode);
 
 	/** Internally used field for list handling. */
 	sys_snode_t node;
@@ -48,12 +54,14 @@ struct dult_near_owner_state_cb {
  */
 void dult_near_owner_state_cb_register(struct dult_near_owner_state_cb *cb);
 
-/** @brief Reset DULT near owner state.
+/** @brief Reset DULT near owner state of the supplied user.
  *
- *  Resets DULT near owner state to boot value which is equal to
- *  the @ref DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER.
+ *  Resets the near owner state to the boot value
+ *  @ref DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
  */
-void dult_near_owner_state_reset(void);
+void dult_near_owner_state_reset(const struct dult_user *user);
 
 #ifdef __cplusplus
 }

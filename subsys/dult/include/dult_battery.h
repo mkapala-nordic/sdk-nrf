@@ -20,31 +20,38 @@
 extern "C" {
 #endif
 
+#include <dult/dult.h>
+
 /** Encode the battery type configuration.
- *  The configuration is encoded as required by the DULT specification.
+ *  The configuration is device-wide (set via Kconfig).
  *
  * @return Byte with an encoded information about the battery type.
  */
 uint8_t dult_battery_type_encode(void);
 
-/** Encode the battery level configuration.
- *  The configuration is encoded as required by the DULT specification.
+/** Encode the battery level configuration for the supplied user.
  *
- * @return Byte with an encoded information about the battery level.
+ * @param user User structure used to authenticate the user.
+ *
+ * @return Byte with an encoded information about the battery level for @p user.
  */
-uint8_t dult_battery_level_encode(void);
+uint8_t dult_battery_level_encode(const struct dult_user *user);
 
-/** @brief Enable DULT battery.
+/** @brief Enable DULT battery for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
  *
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */
-int dult_battery_enable(void);
+int dult_battery_enable(const struct dult_user *user);
 
-/** @brief Reset DULT battery.
+/** @brief Reset DULT battery for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
  *
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */
-int dult_battery_reset(void);
+int dult_battery_reset(const struct dult_user *user);
 
 #ifdef __cplusplus
 }

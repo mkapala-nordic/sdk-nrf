@@ -20,16 +20,21 @@
 extern "C" {
 #endif
 
-/** @brief Check if DULT is in identifier read state.
- *
- *  @return True if the DULT is in identifier read state. Otherwise, False is returned.
- */
-bool dult_id_is_in_read_state(void);
+#include <dult/dult.h>
 
-/** @brief Get identifier payload string.
+/** @brief Check if DULT is in identifier read state for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
+ *
+ *  @return True if the DULT is in identifier read state for @p user. Otherwise, False.
+ */
+bool dult_id_is_in_read_state(const struct dult_user *user);
+
+/** @brief Get identifier payload string for the supplied user.
  *
  *  Thin wrapper for @ref payload_get callback from @ref dult_id_read_state_cb structure.
  *
+ *  @param[in]     user User structure used to authenticate the user.
  *  @param[out]    buf	Pointer to the buffer used to store identifier payload.
  *  @param[in,out] len	Pointer to the length (in bytes) of the buffer used to store
  *			identifier payload. A negative error code shall be returned
@@ -39,19 +44,23 @@ bool dult_id_is_in_read_state(void);
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is
  *	    returned.
  */
-int dult_id_payload_get(uint8_t *buf, size_t *len);
+int dult_id_payload_get(const struct dult_user *user, uint8_t *buf, size_t *len);
 
-/** @brief Enable DULT identifier.
+/** @brief Enable DULT identifier for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
  *
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */
-int dult_id_enable(void);
+int dult_id_enable(const struct dult_user *user);
 
-/** @brief Reset DULT identifier.
+/** @brief Reset DULT identifier for the supplied user.
+ *
+ *  @param user User structure used to authenticate the user.
  *
  *  @return 0 if the operation was successful. Otherwise, a (negative) error code is returned.
  */
-int dult_id_reset(void);
+int dult_id_reset(const struct dult_user *user);
 
 #ifdef __cplusplus
 }

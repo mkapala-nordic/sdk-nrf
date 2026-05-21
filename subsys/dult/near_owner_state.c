@@ -1,11 +1,12 @@
 /*
- * Copyright (c) 2024 Nordic Semiconductor ASA
+ * Copyright (c) 2024-2026 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
 #include <stdbool.h>
 #include <errno.h>
+#include <zephyr/kernel.h>
 #include <zephyr/sys/slist.h>
 
 #include <dult/dult.h>
@@ -15,7 +16,9 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(dult_near_owner_state, CONFIG_DULT_LOG_LEVEL);
 
-static enum dult_near_owner_state_mode cur_mode = DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER;
+static enum dult_near_owner_state_mode cur_modes[CONFIG_DULT_USER_MAX] = {
+	[0 ... CONFIG_DULT_USER_MAX - 1] = DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER,
+};
 static sys_slist_t state_cb_slist = SYS_SLIST_STATIC_INIT(&state_cb_slist);
 
 static bool node_uniqueness_validate(sys_slist_t *slist, sys_snode_t *new_node)
@@ -45,30 +48,45 @@ void dult_near_owner_state_cb_register(struct dult_near_owner_state_cb *cb)
 
 int dult_near_owner_state_set(const struct dult_user *user, enum dult_near_owner_state_mode mode)
 {
-	enum dult_near_owner_state_mode prev_mode = cur_mode;
+	size_t idx;
+	enum dult_near_owner_state_mode prev_mode;
 
-	if (!dult_user_is_registered(user)) {
+	idx = dult_user_slot_idx(user);
+	if (idx == DULT_USER_SLOT_NONE) {
 		return -EACCES;
 	}
 
-	cur_mode = mode;
-	if (prev_mode != cur_mode) {
+	prev_mode = cur_modes[idx];
+	cur_modes[idx] = mode;
+	if (prev_mode != mode) {
 		struct dult_near_owner_state_cb *listener;
 
 		SYS_SLIST_FOR_EACH_CONTAINER(&state_cb_slist, listener, node) {
-			listener->state_changed(cur_mode);
+			listener->state_changed(user, mode);
 		}
 	}
 
 	return 0;
 }
 
-enum dult_near_owner_state_mode dult_near_owner_state_get(void)
+enum dult_near_owner_state_mode dult_near_owner_state_get(const struct dult_user *user)
 {
-	return cur_mode;
+	size_t idx = dult_user_slot_idx(user);
+
+	if (idx == DULT_USER_SLOT_NONE) {
+		return DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER;
+	}
+
+	return cur_modes[idx];
 }
 
-void dult_near_owner_state_reset(void)
+void dult_near_owner_state_reset(const struct dult_user *user)
 {
-	cur_mode = DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER;
+	size_t idx = dult_user_slot_idx(user);
+
+	if (idx == DULT_USER_SLOT_NONE) {
+		return;
+	}
+
+	cur_modes[idx] = DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER;
 }

@@ -77,18 +77,6 @@ static uint32_t timeout_period_max_get(void)
 #endif
 }
 
-static bool is_enabled;
-static const struct dult_motion_detector_cb *motion_detector_cb;
-static const struct dult_motion_detector_sound_cb *sound_cb;
-
-static void motion_enable_work_handle(struct k_work *work);
-static void motion_poll_work_handle(struct k_work *work);
-static void motion_poll_duration_work_handle(struct k_work *work);
-
-static K_WORK_DELAYABLE_DEFINE(motion_enable_work, motion_enable_work_handle);
-static K_WORK_DELAYABLE_DEFINE(motion_poll_work, motion_poll_work_handle);
-static K_WORK_DELAYABLE_DEFINE(motion_poll_duration_work, motion_poll_duration_work_handle);
-
 enum motion_poll_state {
 	MOTION_POLL_STATE_STOPPED,
 	MOTION_POLL_STATE_PASSIVE,
@@ -97,147 +85,207 @@ enum motion_poll_state {
 	MOTION_POLL_STATE_ACTIVE_SOUND_REQUESTED,
 };
 
-static enum motion_poll_state poll_state = MOTION_POLL_STATE_STOPPED;
-static uint8_t sound_count;
+struct md_state {
+	const struct dult_motion_detector_cb *motion_detector_cb;
+	struct k_work_delayable motion_enable_work;
+	struct k_work_delayable motion_poll_work;
+	struct k_work_delayable motion_poll_duration_work;
+	enum motion_poll_state poll_state;
+	uint8_t sound_count;
+	bool is_enabled;
+	size_t slot_idx;
+};
+
+static struct md_state states[CONFIG_DULT_USER_MAX];
+static const struct dult_motion_detector_sound_cb *sound_cb;
+
+static void motion_enable_work_handle(struct k_work *work);
+static void motion_poll_work_handle(struct k_work *work);
+static void motion_poll_duration_work_handle(struct k_work *work);
+
+static void state_init(void)
+{
+	static bool initialized;
+
+	if (initialized) {
+		return;
+	}
+	initialized = true;
+
+	for (size_t i = 0; i < ARRAY_SIZE(states); i++) {
+		states[i].slot_idx = i;
+		states[i].poll_state = MOTION_POLL_STATE_STOPPED;
+		k_work_init_delayable(&states[i].motion_enable_work,
+				      motion_enable_work_handle);
+		k_work_init_delayable(&states[i].motion_poll_work,
+				      motion_poll_work_handle);
+		k_work_init_delayable(&states[i].motion_poll_duration_work,
+				      motion_poll_duration_work_handle);
+	}
+}
+
+static struct md_state *state_from_enable_work(struct k_work *work)
+{
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+
+	return CONTAINER_OF(dwork, struct md_state, motion_enable_work);
+}
+
+static struct md_state *state_from_poll_work(struct k_work *work)
+{
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+
+	return CONTAINER_OF(dwork, struct md_state, motion_poll_work);
+}
+
+static struct md_state *state_from_poll_duration_work(struct k_work *work)
+{
+	struct k_work_delayable *dwork = k_work_delayable_from_work(work);
+
+	return CONTAINER_OF(dwork, struct md_state, motion_poll_duration_work);
+}
+
+static const struct dult_user *state_user(struct md_state *st)
+{
+	return dult_user_by_slot_idx(st->slot_idx);
+}
 
 static void motion_enable_work_handle(struct k_work *work)
 {
+	struct md_state *st = state_from_enable_work(work);
 	int ret;
 
 	LOG_DBG("Enabling the motion detector");
 
-	__ASSERT(motion_detector_cb, "Motion detector callback structure is not registered");
-	__ASSERT(motion_detector_cb->start, "Motion detector start callback is not populated");
+	__ASSERT(st->motion_detector_cb, "Motion detector callback structure is not registered");
+	__ASSERT(st->motion_detector_cb->start,
+		 "Motion detector start callback is not populated");
 
-	if (motion_detector_cb && motion_detector_cb->start) {
-		motion_detector_cb->start();
+	if (st->motion_detector_cb && st->motion_detector_cb->start) {
+		st->motion_detector_cb->start();
 
-		poll_state = MOTION_POLL_STATE_PASSIVE;
-		__ASSERT_NO_MSG(!k_work_delayable_is_pending(&motion_poll_work));
-		ret = k_work_schedule(&motion_poll_work, SEPARATED_UT_SAMPLING_RATE1);
+		st->poll_state = MOTION_POLL_STATE_PASSIVE;
+		__ASSERT_NO_MSG(!k_work_delayable_is_pending(&st->motion_poll_work));
+		ret = k_work_schedule(&st->motion_poll_work, SEPARATED_UT_SAMPLING_RATE1);
 		__ASSERT_NO_MSG(ret == 1);
 	} else {
 		LOG_ERR("Motion detector start callback is not populated");
 	}
 }
 
-static void state_reset(void)
+static void state_reset(struct md_state *st)
 {
 	int ret;
 
-	poll_state = MOTION_POLL_STATE_STOPPED;
-	sound_count = 0;
+	st->poll_state = MOTION_POLL_STATE_STOPPED;
+	st->sound_count = 0;
 
-	/* The state_reset might be called directly from work and thus the calling work may still
-	 * be running.
-	 */
-	ret = k_work_cancel_delayable(&motion_enable_work);
+	ret = k_work_cancel_delayable(&st->motion_enable_work);
 	__ASSERT_NO_MSG((!ret) || (ret == (K_WORK_RUNNING | K_WORK_CANCELING)));
-	ret = k_work_cancel_delayable(&motion_poll_work);
+	ret = k_work_cancel_delayable(&st->motion_poll_work);
 	__ASSERT_NO_MSG((!ret) || (ret == (K_WORK_RUNNING | K_WORK_CANCELING)));
-	ret = k_work_cancel_delayable(&motion_poll_duration_work);
+	ret = k_work_cancel_delayable(&st->motion_poll_duration_work);
 	__ASSERT_NO_MSG((!ret) || (ret == (K_WORK_RUNNING | K_WORK_CANCELING)));
 }
 
-static void backoff_setup(void)
+static void backoff_setup(struct md_state *st)
 {
 	int ret;
 
 	LOG_DBG("Setting up motion detector backoff");
 
-	state_reset();
-	__ASSERT_NO_MSG(!k_work_delayable_is_pending(&motion_enable_work));
-	ret = k_work_schedule(&motion_enable_work, backoff_period_get());
+	state_reset(st);
+	__ASSERT_NO_MSG(!k_work_delayable_is_pending(&st->motion_enable_work));
+	ret = k_work_schedule(&st->motion_enable_work, backoff_period_get());
 	__ASSERT_NO_MSG(ret == 1);
 }
 
-static void motion_detector_stop(void)
+static void motion_detector_stop(struct md_state *st)
 {
-	__ASSERT(motion_detector_cb, "Motion detector callback structure is not registered");
-	__ASSERT(motion_detector_cb->stop, "Motion detector stop callback is not populated");
+	__ASSERT(st->motion_detector_cb, "Motion detector callback structure is not registered");
+	__ASSERT(st->motion_detector_cb->stop,
+		 "Motion detector stop callback is not populated");
 
-	if (motion_detector_cb && motion_detector_cb->stop) {
-		motion_detector_cb->stop();
+	if (st->motion_detector_cb && st->motion_detector_cb->stop) {
+		st->motion_detector_cb->stop();
 	} else {
 		LOG_ERR("Motion detector stop callback is not populated");
 	}
 }
 
-static void motion_poll_handle(void)
+static void motion_poll_handle(struct md_state *st)
 {
 	bool motion_detected;
 
-	__ASSERT(motion_detector_cb, "Motion detector callback structure is not registered");
-	__ASSERT(motion_detector_cb->period_expired,
+	__ASSERT(st->motion_detector_cb, "Motion detector callback structure is not registered");
+	__ASSERT(st->motion_detector_cb->period_expired,
 		 "Motion detector period_expired callback is not populated");
 
-	if (!motion_detector_cb || !motion_detector_cb->period_expired) {
+	if (!st->motion_detector_cb || !st->motion_detector_cb->period_expired) {
 		LOG_ERR("Motion detector period_expired callback is not populated");
 		return;
 	}
 
-	motion_detected = motion_detector_cb->period_expired();
+	motion_detected = st->motion_detector_cb->period_expired();
 	if (motion_detected) {
-		/* Don't reschedule the work. It will be rescheduled after
-		 * a sound playing action is finished.
-		 */
 		__ASSERT_NO_MSG(sound_cb);
-		sound_cb->sound_start();
-		poll_state = (poll_state == MOTION_POLL_STATE_PASSIVE) ?
-			     MOTION_POLL_STATE_PASSIVE_SOUND_REQUESTED :
-			     MOTION_POLL_STATE_ACTIVE_SOUND_REQUESTED;
-		sound_count++;
+		sound_cb->sound_start(state_user(st));
+		st->poll_state = (st->poll_state == MOTION_POLL_STATE_PASSIVE) ?
+				 MOTION_POLL_STATE_PASSIVE_SOUND_REQUESTED :
+				 MOTION_POLL_STATE_ACTIVE_SOUND_REQUESTED;
+		st->sound_count++;
 
-		if (sound_count >= SEPARATED_UT_MAX_SOUND_COUNT) {
+		if (st->sound_count >= SEPARATED_UT_MAX_SOUND_COUNT) {
 			LOG_DBG("Stopping the motion detector: %d sounds played",
 				SEPARATED_UT_MAX_SOUND_COUNT);
 
-			motion_detector_stop();
-			backoff_setup();
+			motion_detector_stop(st);
+			backoff_setup(st);
 		}
 	} else {
-		(void) k_work_reschedule(&motion_poll_work,
-					 (poll_state == MOTION_POLL_STATE_PASSIVE) ?
-					 SEPARATED_UT_SAMPLING_RATE1 : SEPARATED_UT_SAMPLING_RATE2);
+		(void) k_work_reschedule(&st->motion_poll_work,
+					 (st->poll_state == MOTION_POLL_STATE_PASSIVE) ?
+					 SEPARATED_UT_SAMPLING_RATE1 :
+					 SEPARATED_UT_SAMPLING_RATE2);
 	}
 }
 
 static void motion_poll_duration_work_handle(struct k_work *work)
 {
+	struct md_state *st = state_from_poll_duration_work(work);
+
 	LOG_DBG("Stopping the motion detector: active poll duration timeout");
 
-	motion_detector_stop();
-	backoff_setup();
+	motion_detector_stop(st);
+	backoff_setup(st);
 }
 
 static void motion_poll_work_handle(struct k_work *work)
 {
-	if (poll_state == MOTION_POLL_STATE_PASSIVE) {
+	struct md_state *st = state_from_poll_work(work);
+
+	if (st->poll_state == MOTION_POLL_STATE_PASSIVE) {
 		LOG_DBG("Passive motion polling");
-
-		motion_poll_handle();
-	} else if (poll_state == MOTION_POLL_STATE_ACTIVE) {
+		motion_poll_handle(st);
+	} else if (st->poll_state == MOTION_POLL_STATE_ACTIVE) {
 		LOG_DBG("Active motion polling");
-
-		motion_poll_handle();
+		motion_poll_handle(st);
 	} else {
 		__ASSERT(0, "Invalid motion polling state");
 	}
 }
 
-static void separated_mode_transition_handle(void)
+static void separated_mode_transition_handle(struct md_state *st)
 {
 	int err;
 	int ret;
 	uint16_t separated_ut_timeout_period_seed;
 	uint32_t separated_ut_timeout_period;
 
-	/* Calculate the positive randomized time factor. */
 	err = sys_csrand_get(&separated_ut_timeout_period_seed,
 			     sizeof(separated_ut_timeout_period_seed));
 	if (err) {
 		LOG_WRN("DULT: sys_csrand_get failed: %d", err);
-
 		sys_rand_get(&separated_ut_timeout_period_seed,
 			     sizeof(separated_ut_timeout_period_seed));
 	}
@@ -252,45 +300,53 @@ static void separated_mode_transition_handle(void)
 	__ASSERT_NO_MSG(timeout_diff < UINT16_MAX);
 #endif
 
-	/* Convert the random part range from <0; UINT16_MAX> to
-	 * <timeout_min; timeout_max>
-	 */
 	separated_ut_timeout_period = timeout_diff;
 	separated_ut_timeout_period *= separated_ut_timeout_period_seed;
 	separated_ut_timeout_period /= UINT16_MAX;
 	separated_ut_timeout_period += timeout_min;
 
 	LOG_DBG("Starting the work for enabling the motion detector. "
-		"Randomized timeout set to: %" PRIu32 " minutes", separated_ut_timeout_period);
-	__ASSERT_NO_MSG(!k_work_delayable_is_pending(&motion_enable_work));
-	ret = k_work_schedule(&motion_enable_work, K_MINUTES(separated_ut_timeout_period));
+		"Randomized timeout set to: %" PRIu32 " minutes",
+		separated_ut_timeout_period);
+	__ASSERT_NO_MSG(!k_work_delayable_is_pending(&st->motion_enable_work));
+	ret = k_work_schedule(&st->motion_enable_work,
+			      K_MINUTES(separated_ut_timeout_period));
 	__ASSERT_NO_MSG(ret == 1);
 }
 
-static void near_owner_mode_transition_handle(void)
+static void near_owner_mode_transition_handle(struct md_state *st)
 {
-	if (poll_state != MOTION_POLL_STATE_STOPPED) {
+	if (st->poll_state != MOTION_POLL_STATE_STOPPED) {
 		LOG_DBG("Stopping the motion detector: owner nearby");
-		motion_detector_stop();
+		motion_detector_stop(st);
 	} else {
 		LOG_DBG("Motion detector is not running: owner nearby");
 	}
-	state_reset();
+	state_reset(st);
 }
 
-static void near_owner_state_changed(enum dult_near_owner_state_mode mode)
+static void near_owner_state_changed(const struct dult_user *user,
+				     enum dult_near_owner_state_mode mode)
 {
-	if (!is_enabled) {
+	size_t idx = dult_user_slot_idx(user);
+	struct md_state *st;
+
+	if (idx == DULT_USER_SLOT_NONE) {
+		return;
+	}
+
+	st = &states[idx];
+	if (!st->is_enabled) {
 		return;
 	}
 
 	switch (mode) {
 	case DULT_NEAR_OWNER_STATE_MODE_SEPARATED:
-		separated_mode_transition_handle();
+		separated_mode_transition_handle(st);
 		break;
 
 	case DULT_NEAR_OWNER_STATE_MODE_NEAR_OWNER:
-		near_owner_mode_transition_handle();
+		near_owner_mode_transition_handle(st);
 		break;
 
 	default:
@@ -309,29 +365,37 @@ static bool sound_requested(enum motion_poll_state state)
 	       (state == MOTION_POLL_STATE_ACTIVE_SOUND_REQUESTED);
 }
 
-static void sound_completed_handle(void)
+static void sound_completed_handle(struct md_state *st)
 {
-	if (sound_requested(poll_state)) {
+	if (sound_requested(st->poll_state)) {
 		int ret;
 
-		if (poll_state == MOTION_POLL_STATE_PASSIVE_SOUND_REQUESTED) {
-			__ASSERT_NO_MSG(!k_work_delayable_is_pending(&motion_poll_duration_work));
-			ret = k_work_schedule(&motion_poll_duration_work,
+		if (st->poll_state == MOTION_POLL_STATE_PASSIVE_SOUND_REQUESTED) {
+			__ASSERT_NO_MSG(
+				!k_work_delayable_is_pending(&st->motion_poll_duration_work));
+			ret = k_work_schedule(&st->motion_poll_duration_work,
 					      SEPARATED_UT_ACTIVE_POLL_DURATION);
 			__ASSERT_NO_MSG(ret == 1);
 		}
 
-		__ASSERT_NO_MSG(!k_work_delayable_is_pending(&motion_poll_work));
-		ret = k_work_schedule(&motion_poll_work, SEPARATED_UT_SAMPLING_RATE2);
+		__ASSERT_NO_MSG(!k_work_delayable_is_pending(&st->motion_poll_work));
+		ret = k_work_schedule(&st->motion_poll_work, SEPARATED_UT_SAMPLING_RATE2);
 		__ASSERT_NO_MSG(ret == 1);
-		poll_state = MOTION_POLL_STATE_ACTIVE;
+		st->poll_state = MOTION_POLL_STATE_ACTIVE;
 	}
 }
 
-void dult_motion_detector_sound_state_change_notify(bool active, bool native)
+void dult_motion_detector_sound_state_change_notify(const struct dult_user *user,
+						    bool active, bool native)
 {
+	size_t idx = dult_user_slot_idx(user);
+
+	if (idx == DULT_USER_SLOT_NONE) {
+		return;
+	}
+
 	if (!active) {
-		sound_completed_handle();
+		sound_completed_handle(&states[idx]);
 	}
 }
 
@@ -348,12 +412,16 @@ void dult_motion_detector_sound_cb_register(const struct dult_motion_detector_so
 int dult_motion_detector_cb_register(const struct dult_user *user,
 				     const struct dult_motion_detector_cb *cb)
 {
-	if (dult_user_is_ready()) {
-		LOG_ERR("DULT Motion Detector: module must be disabled to register callbacks");
+	size_t idx = dult_user_slot_idx(user);
+
+	if (idx == DULT_USER_SLOT_NONE) {
 		return -EACCES;
 	}
 
-	if (!dult_user_is_registered(user)) {
+	state_init();
+
+	if (dult_user_is_ready(user)) {
+		LOG_ERR("DULT Motion Detector: module must be disabled to register callbacks");
 		return -EACCES;
 	}
 
@@ -364,7 +432,7 @@ int dult_motion_detector_cb_register(const struct dult_user *user,
 		return -EINVAL;
 	}
 
-	if (motion_detector_cb) {
+	if (states[idx].motion_detector_cb) {
 		LOG_ERR("DULT Motion Detector: motion detector callbacks already registered");
 		return -EALREADY;
 	}
@@ -373,21 +441,28 @@ int dult_motion_detector_cb_register(const struct dult_user *user,
 		return -EINVAL;
 	}
 
-	motion_detector_cb = cb;
+	states[idx].motion_detector_cb = cb;
 
 	return 0;
 }
 
-int dult_motion_detector_enable(void)
+int dult_motion_detector_enable(const struct dult_user *user)
 {
 	static bool dult_near_owner_state_cb_registered;
+	size_t idx = dult_user_slot_idx(user);
 
-	if (is_enabled) {
+	if (idx == DULT_USER_SLOT_NONE) {
+		return -EACCES;
+	}
+
+	state_init();
+
+	if (states[idx].is_enabled) {
 		LOG_ERR("DULT Motion Detector: already enabled");
 		return -EALREADY;
 	}
 
-	if (!motion_detector_cb) {
+	if (!states[idx].motion_detector_cb) {
 		LOG_ERR("DULT Motion Detector: callbacks must be registered at this point");
 		return -EINVAL;
 	}
@@ -397,28 +472,34 @@ int dult_motion_detector_enable(void)
 		dult_near_owner_state_cb_registered = true;
 	}
 
-	is_enabled = true;
+	states[idx].is_enabled = true;
 
-	near_owner_state_changed(dult_near_owner_state_get());
+	near_owner_state_changed(user, dult_near_owner_state_get(user));
 
 	return 0;
 }
 
-int dult_motion_detector_reset(void)
+int dult_motion_detector_reset(const struct dult_user *user)
 {
-	if (!is_enabled) {
+	size_t idx = dult_user_slot_idx(user);
+
+	if (idx == DULT_USER_SLOT_NONE) {
+		return -EACCES;
+	}
+
+	if (!states[idx].is_enabled) {
 		LOG_ERR("DULT Motion Detector: is not enabled");
 		return -EALREADY;
 	}
 
-	is_enabled = false;
+	states[idx].is_enabled = false;
 
-	if (poll_state != MOTION_POLL_STATE_STOPPED) {
-		motion_detector_stop();
+	if (states[idx].poll_state != MOTION_POLL_STATE_STOPPED) {
+		motion_detector_stop(&states[idx]);
 	}
-	state_reset();
+	state_reset(&states[idx]);
 
-	motion_detector_cb = NULL;
+	states[idx].motion_detector_cb = NULL;
 
 	return 0;
 }
@@ -437,7 +518,8 @@ int dult_test_mode_separated_ut_period_set(struct dult_test_mode_separated_ut_pe
 	ut_timeout_period_min = data.timeout_min;
 	ut_timeout_period_max = data.timeout_max;
 
-	LOG_DBG("DULT Motion Detector test mode: backoff=%" PRIu32 " min, timeout=[%" PRIu32 ", %" PRIu32 "] min",
+	LOG_DBG("DULT Motion Detector test mode: backoff=%" PRIu32 " min, "
+		"timeout=[%" PRIu32 ", %" PRIu32 "] min",
 		data.backoff, data.timeout_min, data.timeout_max);
 
 	return 0;
