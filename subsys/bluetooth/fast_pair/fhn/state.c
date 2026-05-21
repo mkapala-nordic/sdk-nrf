@@ -1217,6 +1217,11 @@ int bt_fast_pair_fhn_id_set(uint8_t id)
 	return 0;
 }
 
+uint8_t fp_fhn_state_bt_id_get(void)
+{
+	return fhn_adv_param.id;
+}
+
 static void fhn_state_battery_level_changed(void)
 {
 	/* Update the ongoing advertising payload asynchronously. */

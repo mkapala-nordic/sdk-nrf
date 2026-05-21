@@ -5,13 +5,17 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(fp_fhn_dult_integration, CONFIG_BT_FAST_PAIR_LOG_LEVEL);
 
 #include <dult/dult.h>
+#include <dult/bt.h>
 
 #include "fp_fhn_dult_integration.h"
+#include "fp_fhn_state.h"
 #include "fp_activation.h"
 #include "fp_registration_data.h"
 
@@ -59,6 +63,28 @@ const struct dult_user *fp_fhn_dult_integration_user_get(void)
 	return &dult_user;
 }
 
+static bool fp_fhn_anos_owns_connection(struct bt_conn *conn)
+{
+	struct bt_conn_info info;
+	int err;
+
+	err = bt_conn_get_info(conn, &info);
+	if (err) {
+		LOG_WRN("FHN: bt_conn_get_info returned error: %d", err);
+		return false;
+	}
+
+	return (info.id == fp_fhn_state_bt_id_get());
+}
+
+static const struct dult_anos_cb fp_fhn_anos_cb = {
+	/* Do not implement verify_access callback - rely on default behavior of the
+	 * DULT non-owner/separated mode.
+	 */
+	.verify_access = NULL,
+	.owns_connection = fp_fhn_anos_owns_connection,
+};
+
 static int dult_init(void)
 {
 	static const size_t model_id_offset = sizeof(product_data) - FP_REG_DATA_MODEL_ID_LEN;
@@ -74,6 +100,12 @@ static int dult_init(void)
 	err = dult_user_register(&dult_user);
 	if (err) {
 		LOG_ERR("FHN: dult_user_register returned error: %d", err);
+		return err;
+	}
+
+	err = dult_anos_cb_register(&dult_user, &fp_fhn_anos_cb);
+	if (err) {
+		LOG_ERR("FHN: dult_anos_cb_register returned error: %d", err);
 		return err;
 	}
 

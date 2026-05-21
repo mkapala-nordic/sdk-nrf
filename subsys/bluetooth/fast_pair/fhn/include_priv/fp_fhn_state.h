@@ -98,6 +98,16 @@ int fp_fhn_state_utp_mode_deactivate(void);
  */
 bool fp_fhn_state_utp_mode_ring_auth_skip(void);
 
+/** Get the Bluetooth identity used by the FHN advertising set.
+ *
+ *  Returns the local Bluetooth identity (see @ref bt_id_create) used by the FHN
+ *  advertising set. Useful for callers that need to distinguish FHN connections from
+ *  connections that belong to other Bluetooth identities.
+ *
+ *  @return Bluetooth identity used by the FHN advertising set.
+ */
+uint8_t fp_fhn_state_bt_id_get(void);
+
 #ifdef __cplusplus
 }
 #endif
